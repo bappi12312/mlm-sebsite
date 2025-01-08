@@ -15,8 +15,10 @@ const paymentSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ["pending","completed"]
+    enum: ["pending","completed"],
+    default: "pending"
   }
 },{timestamps: true})
+
 
 export const Payment = mongoose.model("Payment",paymentSchema)

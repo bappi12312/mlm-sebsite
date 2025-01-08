@@ -8,7 +8,8 @@ import { genarateReferralCode } from '../utils/genarateReferralCode.js'
 import { deleteMediaFromCloudinary, uploadOnCloudinary } from '../utils/cloudinary.js'
 import redis from "redis"
 import mongoose from 'mongoose'
-import { json } from 'express'
+import { Payment } from '../models/payment.model.js'
+import { PaymentRequeste } from '../models/paymentRequeste.model.js'
 
 const redisClient = redis.createClient()
 
@@ -41,11 +42,11 @@ const userRegister = asyncHandler(async (req, res) => {
 
     const referalCode = await genarateReferralCode()
 
-    let photoLocalPath;
-    if (req.files && Array.isArray(req.files.photo[0]) && req.files.photo.length > 0) {
-      photoLocalPath = req.files.photo[0].path;
-    }
-    const photo = await uploadOnCloudinary(photoLocalPath)
+    // let photoLocalPath;
+    // if (req.files && Array.isArray(req.files.photo[0]) && req.files.photo.length > 0) {
+    //   photoLocalPath = req.files.photo[0].path;
+    // }
+    // const photo = await uploadOnCloudinary(photoLocalPath)
     const newUser = new User({
       name,
       email: email?.toLowercase(),
@@ -54,7 +55,7 @@ const userRegister = asyncHandler(async (req, res) => {
       referalCode,
       role: 'user',
       status: 'Inactive',
-      photo: photo?.url
+      photo:""
     })
     if (referrer) {
       const sponser = await User.findById({ referalCode: referrer.referredBy })
@@ -309,7 +310,6 @@ const updateUser = asyncHandler(async (req, res) => {
 
 })
 
-
 // distribute commission for every users
 const userCommission = asyncHandler(async (req, res) => {
   const { amount = 100 } = req.body;
@@ -396,8 +396,123 @@ const getUserStats = asyncHandler(async (req, res) => {
   }
 })
 
+const paymentSchema = asyncHandler(async(req,res) => {
+  const {FromNumber,ToNumber,Amount} = req.body;
+  if(!FromNumber || !ToNumber || !Amount) {
+    throw new ApiError(400,"all feilds are requred")
+  }
 
+  try {
+    const payment = await Payment.create({
+      FromNumber,
+      ToNumber,
+      Amount,
+      status: "pending"
+    })
 
+    if(!payment) {
+      throw new ApiError(400,"payment not create")
+    }
+
+    return res
+    .status(200)
+    .json(
+      new ApiResponse(
+        200,
+        {payment},
+        "payment create"
+      )
+    )
+  } catch (error) {
+    throw new ApiError(500,error?.message,"error while creating payment")
+  }
+})
+
+// payment confirmation
+const paymentConfirmation = asyncHandler(async(req,res) => {
+  try {
+    const {paymentId} = req.body;
+    const userId = req.user?._id;
+    if(!paymentId) {
+      throw new ApiError(400,"payment id is required")
+    }
+
+    const payment = await Payment.findById(paymentId)
+    if(!payment) {
+      throw new ApiError(500,"payment not found")
+    }
+
+    const user = await User.findById(userId)
+    if(!user) {
+      throw new ApiError(400,"user not found")
+    }
+
+    if((payment.status === "pending")&& (payment.Amount === 100)) {
+      // const user = await User.findByIdAndUpdate(
+      //   userId,
+      //   {
+      //     $set: {
+      //       status: "Active"
+      //     }
+      //   },
+      //   {
+      //     new: true
+      //   }
+      // ).select("-password -refreshToken")
+      payment.status = "completed"
+      user.status = "Active"
+    }
+
+    await payment.save({validateBeforeSave: false})
+    await user.save({validateBeforeSave: false})
+
+    return res
+    .status(200)
+    .json(
+      new ApiResponse(
+        200,
+        {user},
+        "payment confirmation succesfully"
+      )
+    )
+  } catch (error) {
+    throw new ApiError(500,error?.message,"error while getting payment confirmation")
+  }
+})
+
+// payment requested
+const paymentRequsted = asyncHandler(async(req,res) => {
+  const {type,number,confirmNumber} = req.body;
+  if(!type || !number || !confirmNumber) {
+    throw new ApiError(400,"all feilds are requred")
+  }
+  if(!(number === confirmNumber)) {
+    throw new ApiError(400,"confirm number and number should be same")
+  }
+
+  try {
+    const paymentRequeste = await PaymentRequeste.create({
+      type,
+      number,
+      confirmNumber,
+    })
+    if(!paymentRequeste) {
+      throw new ApiError(400,"payment requste not create")
+    }
+
+    return res
+    .status(200)
+    .json(
+      new ApiResponse(
+        200,
+        {paymentRequeste},
+        "payment request successful"
+      )
+    )
+  } catch (error) {
+    throw new ApiError(500,error?.message,"error while getting payment requested")
+  }
+})
 
 
 export {
@@ -410,4 +525,7 @@ export {
   updateUser,
   userCommission,
   getUserStats,
+  paymentSchema,
+  paymentConfirmation,
+  paymentRequsted
 }
