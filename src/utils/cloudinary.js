@@ -46,5 +46,4 @@ const deleteMediaFromCloudinary = async (publicId) => {
 export {
   uploadOnCloudinary,
   deleteMediaFromCloudinary,
-  deleteVideoFromCloudinary
 }

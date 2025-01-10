@@ -11,11 +11,11 @@ import mongoose from 'mongoose'
 import { Payment } from '../models/payment.model.js'
 import { PaymentRequeste } from '../models/paymentRequeste.model.js'
 
-const redisClient = redis.createClient()
+// const redisClient = redis.createClient()
 
-redisClient.on('error', (err) => console.log('Redis error', err)
-)
-redisClient.connect()
+// redisClient.on('error', (err) => console.log('Redis error', err)
+// )
+// redisClient.connect()
 
 
 const userRegister = asyncHandler(async (req, res) => {
@@ -161,36 +161,36 @@ const logoutUser = asyncHandler(async (req, res) => {
   }
 })
 
-// get single user;
-const getSingleUser = asyncHandler(async (req, res) => {
-  const userId = req.params.id;
+// // get single user;
+// const getSingleUser = asyncHandler(async (req, res) => {
+//   const userId = req.params.id;
 
-  try {
-    const cachedUser = await redisClient.get(`user:${userId}`)
-    if (cachedUser) {
-      return res.status(200).json(JSON.parse(cachedUser));
-    }
+//   try {
+//     const cachedUser = await redisClient.get(`user:${userId}`)
+//     if (cachedUser) {
+//       return res.status(200).json(JSON.parse(cachedUser));
+//     }
 
-    // if not in cache fetch from database
-    const user = await User.findById(userId)
-    if (!user) {
-      throw new ApiError(400, "user not found")
-    }
-    await redisClient.setEx(`user:${userId}`, 3600, JSON.stringify(user))
+//     // if not in cache fetch from database
+//     const user = await User.findById(userId)
+//     if (!user) {
+//       throw new ApiError(400, "user not found")
+//     }
+//     await redisClient.setEx(`user:${userId}`, 3600, JSON.stringify(user))
 
-    return res
-      .status(200)
-      .json(
-        new ApiResponse(
-          200,
-          { user },
-          "user get successfully"
-        )
-      )
-  } catch (error) {
-    throw new ApiError(500, error?.message, "error while get a user")
-  }
-})
+//     return res
+//       .status(200)
+//       .json(
+//         new ApiResponse(
+//           200,
+//           { user },
+//           "user get successfully"
+//         )
+//       )
+//   } catch (error) {
+//     throw new ApiError(500, error?.message, "error while get a user")
+//   }
+// })
 
 // update a user password
 const updatePassword = asyncHandler(async (req, res) => {
@@ -552,7 +552,6 @@ export {
   userRegister,
   userLogin,
   logoutUser,
-  getSingleUser,
   updatePassword,
   refreshAccessToken,
   updateUser,

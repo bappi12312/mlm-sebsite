@@ -26,10 +26,10 @@ const userSchema = new mongoose.Schema({
     type: String,
     unique: true,
   },
-  referredBy: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "User"
-  }, // Direct recruiter
+  // referredBy: {
+  //   type: mongoose.Schema.Types.ObjectId,
+  //   ref: "User"
+  // }, // Direct recruiter
   earnings: {
     type: Number,
     default: 0,
@@ -54,12 +54,12 @@ const userSchema = new mongoose.Schema({
   refreshToken: {
     type: String
   },
-  downline: [
-    {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: User,
-    }
-  ],
+  // downline: [
+  //   {
+  //     type: mongoose.Schema.Types.ObjectId,
+  //     ref: User,
+  //   }
+  // ],
   transactions: [
     {
       amount: Number,
@@ -95,7 +95,7 @@ userSchema.methods.generateAccessToken = function(){
   )
 }
 
-serSchema.methods.generateRefreshToken = function(){
+userSchema.methods.generateRefreshToken = function(){
   return jwt.sign(
       {
           _id: this._id,
