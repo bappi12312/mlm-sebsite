@@ -396,7 +396,7 @@ const getUserStats = asyncHandler(async (req, res) => {
   }
 })
 
-const paymentSchema = asyncHandler(async(req,res) => {
+const paymentCreation = asyncHandler(async(req,res) => {
   const {FromNumber,ToNumber,Amount} = req.body;
   if(!FromNumber || !ToNumber || !Amount) {
     throw new ApiError(400,"all feilds are requred")
@@ -428,6 +428,41 @@ const paymentSchema = asyncHandler(async(req,res) => {
   }
 })
 
+// payment requested
+const paymentRequsted = asyncHandler(async(req,res) => {
+  const {type,number,confirmNumber} = req.body;
+  if(!type || !number || !confirmNumber) {
+    throw new ApiError(400,"all feilds are requred")
+  }
+  if(!(number === confirmNumber)) {
+    throw new ApiError(400,"confirm number and number should be same")
+  }
+
+  try {
+    const paymentRequeste = await PaymentRequeste.create({
+      type,
+      number,
+      confirmNumber,
+    })
+    if(!paymentRequeste) {
+      throw new ApiError(400,"payment requste not create")
+    }
+
+    return res
+    .status(200)
+    .json(
+      new ApiResponse(
+        200,
+        {paymentRequeste},
+        "payment request successful"
+      )
+    )
+  } catch (error) {
+    throw new ApiError(500,error?.message,"error while getting payment requested")
+  }
+})
+
+// admin
 // payment confirmation
 const paymentConfirmation = asyncHandler(async(req,res) => {
   try {
@@ -480,39 +515,37 @@ const paymentConfirmation = asyncHandler(async(req,res) => {
   }
 })
 
-// payment requested
-const paymentRequsted = asyncHandler(async(req,res) => {
-  const {type,number,confirmNumber} = req.body;
-  if(!type || !number || !confirmNumber) {
-    throw new ApiError(400,"all feilds are requred")
-  }
-  if(!(number === confirmNumber)) {
-    throw new ApiError(400,"confirm number and number should be same")
-  }
-
+// get all users by admin
+const allUsers = asyncHandler(async(req,res) => {
   try {
-    const paymentRequeste = await PaymentRequeste.create({
-      type,
-      number,
-      confirmNumber,
-    })
-    if(!paymentRequeste) {
-      throw new ApiError(400,"payment requste not create")
+    const users = await User.aggregate([
+      {
+        $group: {
+          _id: "$status",
+          users: {$push: "$$ROOT"}
+        }
+      }
+    ])
+    if(!(users.length > 0)) {
+      throw new ApiError(401,"users not found")
     }
-
     return res
     .status(200)
     .json(
       new ApiResponse(
         200,
-        {paymentRequeste},
-        "payment request successful"
+        {users},
+        "all users sent successfully"
       )
     )
   } catch (error) {
-    throw new ApiError(500,error?.message,"error while getting payment requested")
+    
   }
 })
+
+
+
+
 
 
 export {
@@ -525,7 +558,8 @@ export {
   updateUser,
   userCommission,
   getUserStats,
-  paymentSchema,
+  paymentCreation,
   paymentConfirmation,
-  paymentRequsted
+  paymentRequsted,
+  allUsers
 }
