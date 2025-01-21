@@ -3,19 +3,25 @@ import { ApiError } from "./ApiError.js"
 
 const generateAccessAndRefreshTokens = async (userId) => {
   try {
-      const user = await User.findById(userId)
-      const accessToken = user.generateAccessToken()
-      const refreshToken = user.generateRefreshToken()
+    const user = await User.findById(userId);
+    console.log("User object:");  // Log the user object to check its value
+    if (!user) {
+      throw new Error("User not found");
+    }
+  
+    const accessToken = user.generateAccessToken();
+    const refreshToken = user.generateRefreshToken();
 
-      user.refreshToken = refreshToken
-      await user.save({ validateBeforeSave: false })
+    user.refreshToken = refreshToken;
+    await user.save({ validateBeforeSave: false });
 
-      return { accessToken, refreshToken }
-
+    return { accessToken, refreshToken };
   } catch (error) {
-      throw new ApiError(500, "Something went wrong while generating refresh and access token")
+    console.error("Error in generateAccessAndRefreshTokens:", error);
+    throw new ApiError(500, "Something went wrong while generating refresh and access token");
   }
-}
+};
+
 
 export {
   generateAccessAndRefreshTokens,

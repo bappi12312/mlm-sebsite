@@ -21,62 +21,60 @@ import { PaymentRequeste } from '../models/paymentRequeste.model.js'
 const userRegister = asyncHandler(async (req, res) => {
   const { name, email, password, referredBy } = req.body;
 
-  if ([name, email, password, referredBy].some(val => val?.trim === "")) {
-    throw new ApiError(400, "all feilds are required")
+  if (!name?.trim() || !email?.trim() || !password?.trim()) {
+    throw new ApiError(400, "All fields are required");
   }
 
   try {
-    let referrer = null;
+    const emailNormalized = email.toLowerCase().trim();
+    let referrer = referredBy
+      ? await User.findOne({ referalCode: referredBy.trim() })
+      : null;
 
-    if (referredBy) {
-      referrer = await User.findOne({
-        $or: [{ referalCode: referredBy },]
-      })
-      if (!referrer) return res.status(400).json({ message: 'Invalid referral code.' });
+    if (referredBy && !referrer) {
+      return res.status(400).json({ message: "Invalid referral code." });
     }
 
-    const existedUser = await User.findOne({ email })
+    const existedUser = await User.findOne({ email: emailNormalized });
     if (existedUser) {
-      throw new ApiError(400, "user already existed")
+      throw new ApiError(400, "User already exists");
     }
 
-    const referalCode = await genarateReferralCode()
+    const referalCode = await genarateReferralCode();
 
-    // let photoLocalPath;
-    // if (req.files && Array.isArray(req.files.photo[0]) && req.files.photo.length > 0) {
-    //   photoLocalPath = req.files.photo[0].path;
-    // }
-    // const photo = await uploadOnCloudinary(photoLocalPath)
     const newUser = new User({
       name,
-      email: email?.toLowercase(),
+      email: emailNormalized,
       password,
-      referredBy: referrer?.referalCode,
+      referredBy: referrer?._id || null,
       referalCode,
-      role: 'user',
-      status: 'Inactive',
-      photo:""
-    })
+      role: "user",
+      status: "Inactive",
+      photo: "",
+      downline: [],
+    });
+
     if (referrer) {
-      const sponser = await User.findById({ referalCode: referrer.referredBy })
-      sponser.downline.push(newUser._id)
-      await sponser.save()
+      // const sponser = await User.findById(referrer.referredBy);
+      // if (sponser) {
+      //   sponser.downline.push(newUser._id);
+      //   await sponser.save();
+      // }
+      referrer.downline.push(newUser?._id)
+      referrer.save()
     }
+
     await newUser.save();
 
+    const { password: _, ...safeUserData } = newUser.toObject();
     return res
       .status(200)
-      .json(
-        new ApiResponse(
-          200, { newUser }, "user create successfully"
-        )
-      )
+      .json(new ApiResponse(200, { user: safeUserData }, "User created successfully"));
   } catch (error) {
-    throw new ApiError(
-      500, error?.message, "error while creating user"
-    )
+    console.error("Error during user registration:", error);
+    throw new ApiError(500, error?.message || "Error while creating user");
   }
-})
+});
 
 const userLogin = asyncHandler(async (req, res) => {
   const { email, password } = req.body;
@@ -96,8 +94,8 @@ const userLogin = asyncHandler(async (req, res) => {
     if (!isPasswordValid) {
       throw new ApiError(401, "password are incorrrect")
     }
-    const { accessToken, refreshToken } = await generateAccessAndRefreshTokens(user._id)
-    const loggedInUser = await User.findById(user._id).select("_password -refreshToken")
+    const { accessToken, refreshToken } = await generateAccessAndRefreshTokens(user?._id)
+    const loggedInUser = await User.findById(user._id).select("-password -refreshToken")
 
     // cookies(cannot be modified in frontend only server can)
     const options = {
@@ -107,59 +105,54 @@ const userLogin = asyncHandler(async (req, res) => {
 
     return res
       .status(200)
-      .cookie('accessToken', accessToken, options)
-      .cookie('refreshToken', refreshToken, options)
+      .cookie("accessToken", accessToken, options)
+      .cookie("refreshToken", refreshToken, options)
       .json(
         new ApiResponse(
           200,
           {
             user: loggedInUser, accessToken, refreshToken
           },
-          "user logged in succesfully"
+          "User logged In Successfully"
         )
       )
 
   } catch (error) {
+    console.log(error);
+
     throw new ApiError(
-      500, error?.message, "error while loging the user"
+      500, error?.message || "error while loging the user"
     )
   }
 })
 
 const logoutUser = asyncHandler(async (req, res) => {
   try {
+    if (!req.user?._id) {
+      throw new ApiError(400, "User ID not found");
+    }
+
+    // Unset refresh token
     await User.findByIdAndUpdate(
       req.user._id,
-      {
-        $unset: {
-          refreshToken: 1
-        }
-      },
-      {
-        new: true
-      }
-    )
+      { $unset: { refreshToken: 1 } },
+      { new: true }
+    );
+
+    // Clear cookies
     const options = {
       httpOnly: true,
-      secure: true
-    }
-    return res
-      .status(200)
-      .clearCookie("accessToken", options)
+      secure: true,
+    };
+    res.clearCookie("accessToken", options)
       .clearCookie("refreshToken", options)
-      .json(
-        new ApiResponse(
-          200, {}, "User logout successfully"
-        )
-      )
+      .status(200)
+      .json(new ApiResponse(200, {}, "User logged out successfully"));
   } catch (error) {
-    throw new ApiError(
-      500,
-      error?.message,
-      "error while logout the user"
-    )
+    throw new ApiError(500, error.message || "Error while logging out");
   }
-})
+});
+
 
 // // get single user;
 // const getSingleUser = asyncHandler(async (req, res) => {
@@ -381,25 +374,25 @@ const getUserStats = asyncHandler(async (req, res) => {
       }
     ])
 
-    redisClient.setEx(`userStats:${req.user?._id}`,3600,JSON.stringify(stats))
+    redisClient.setEx(`userStats:${req.user?._id}`, 3600, JSON.stringify(stats))
     return res
-    .status(200)
-    .json(
-      200,
-      {
-       user: stats[0]
-      },
-      "get user stats and downline"
-    )
+      .status(200)
+      .json(
+        200,
+        {
+          user: stats[0]
+        },
+        "get user stats and downline"
+      )
   } catch (error) {
-    throw new ApiError(500,error?.message,"error while getting the user stats")
+    throw new ApiError(500, error?.message, "error while getting the user stats")
   }
 })
 
-const paymentCreation = asyncHandler(async(req,res) => {
-  const {FromNumber,ToNumber,Amount} = req.body;
-  if(!FromNumber || !ToNumber || !Amount) {
-    throw new ApiError(400,"all feilds are requred")
+const paymentCreation = asyncHandler(async (req, res) => {
+  const { FromNumber, ToNumber, Amount } = req.body;
+  if (!FromNumber || !ToNumber || !Amount) {
+    throw new ApiError(400, "all feilds are requred")
   }
 
   try {
@@ -410,32 +403,32 @@ const paymentCreation = asyncHandler(async(req,res) => {
       status: "pending"
     })
 
-    if(!payment) {
-      throw new ApiError(400,"payment not create")
+    if (!payment) {
+      throw new ApiError(400, "payment not create")
     }
 
     return res
-    .status(200)
-    .json(
-      new ApiResponse(
-        200,
-        {payment},
-        "payment create"
+      .status(200)
+      .json(
+        new ApiResponse(
+          200,
+          { payment },
+          "payment create"
+        )
       )
-    )
   } catch (error) {
-    throw new ApiError(500,error?.message,"error while creating payment")
+    throw new ApiError(500, error?.message, "error while creating payment")
   }
 })
 
 // payment requested
-const paymentRequsted = asyncHandler(async(req,res) => {
-  const {type,number,confirmNumber} = req.body;
-  if(!type || !number || !confirmNumber) {
-    throw new ApiError(400,"all feilds are requred")
+const paymentRequsted = asyncHandler(async (req, res) => {
+  const { type, number, confirmNumber } = req.body;
+  if (!type || !number || !confirmNumber) {
+    throw new ApiError(400, "all feilds are requred")
   }
-  if(!(number === confirmNumber)) {
-    throw new ApiError(400,"confirm number and number should be same")
+  if (!(number === confirmNumber)) {
+    throw new ApiError(400, "confirm number and number should be same")
   }
 
   try {
@@ -444,45 +437,45 @@ const paymentRequsted = asyncHandler(async(req,res) => {
       number,
       confirmNumber,
     })
-    if(!paymentRequeste) {
-      throw new ApiError(400,"payment requste not create")
+    if (!paymentRequeste) {
+      throw new ApiError(400, "payment requste not create")
     }
 
     return res
-    .status(200)
-    .json(
-      new ApiResponse(
-        200,
-        {paymentRequeste},
-        "payment request successful"
+      .status(200)
+      .json(
+        new ApiResponse(
+          200,
+          { paymentRequeste },
+          "payment request successful"
+        )
       )
-    )
   } catch (error) {
-    throw new ApiError(500,error?.message,"error while getting payment requested")
+    throw new ApiError(500, error?.message, "error while getting payment requested")
   }
 })
 
 // admin
 // payment confirmation
-const paymentConfirmation = asyncHandler(async(req,res) => {
+const paymentConfirmation = asyncHandler(async (req, res) => {
   try {
-    const {paymentId} = req.body;
+    const { paymentId } = req.body;
     const userId = req.user?._id;
-    if(!paymentId) {
-      throw new ApiError(400,"payment id is required")
+    if (!paymentId) {
+      throw new ApiError(400, "payment id is required")
     }
 
     const payment = await Payment.findById(paymentId)
-    if(!payment) {
-      throw new ApiError(500,"payment not found")
+    if (!payment) {
+      throw new ApiError(500, "payment not found")
     }
 
     const user = await User.findById(userId)
-    if(!user) {
-      throw new ApiError(400,"user not found")
+    if (!user) {
+      throw new ApiError(400, "user not found")
     }
 
-    if((payment.status === "pending")&& (payment.Amount === 100)) {
+    if ((payment.status === "pending") && (payment.Amount === 100)) {
       // const user = await User.findByIdAndUpdate(
       //   userId,
       //   {
@@ -498,48 +491,48 @@ const paymentConfirmation = asyncHandler(async(req,res) => {
       user.status = "Active"
     }
 
-    await payment.save({validateBeforeSave: false})
-    await user.save({validateBeforeSave: false})
+    await payment.save({ validateBeforeSave: false })
+    await user.save({ validateBeforeSave: false })
 
     return res
-    .status(200)
-    .json(
-      new ApiResponse(
-        200,
-        {user},
-        "payment confirmation succesfully"
+      .status(200)
+      .json(
+        new ApiResponse(
+          200,
+          { user },
+          "payment confirmation succesfully"
+        )
       )
-    )
   } catch (error) {
-    throw new ApiError(500,error?.message,"error while getting payment confirmation")
+    throw new ApiError(500, error?.message, "error while getting payment confirmation")
   }
 })
 
 // get all users by admin
-const allUsers = asyncHandler(async(req,res) => {
+const allUsers = asyncHandler(async (req, res) => {
   try {
     const users = await User.aggregate([
       {
         $group: {
           _id: "$status",
-          users: {$push: "$$ROOT"}
+          users: { $push: "$$ROOT" }
         }
       }
     ])
-    if(!(users.length > 0)) {
-      throw new ApiError(401,"users not found")
+    if (!(users.length > 0)) {
+      throw new ApiError(401, "users not found")
     }
     return res
-    .status(200)
-    .json(
-      new ApiResponse(
-        200,
-        {users},
-        "all users sent successfully"
+      .status(200)
+      .json(
+        new ApiResponse(
+          200,
+          { users },
+          "all users sent successfully"
+        )
       )
-    )
   } catch (error) {
-    
+
   }
 })
 
