@@ -12,6 +12,19 @@ const paymentRequestSchema = new mongoose.Schema({
   confirmNumber: {
     type: Number,
     required: true,
+  },
+  user: {
+    type: String,
+    required: true,
+  },
+  status: {
+    type: String,
+    enum: ["pending","confirm","reject"],
+    default: "pending"
+  },
+  date: {
+    type: Date,
+    default: Date.now()
   }
 },{timestamps: true})
 

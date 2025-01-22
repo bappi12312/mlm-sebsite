@@ -358,7 +358,7 @@ const getUserStats = asyncHandler(async (req, res) => {
   try {
     const stats = await User.aggregate([
       {
-        $match: { _id: mongoose.Types.ObjectId(req.user?._id) }
+        $match: { _id: req.user?._id }
       },
       {
         $lookup: {
@@ -383,11 +383,13 @@ const getUserStats = asyncHandler(async (req, res) => {
     return res
       .status(200)
       .json(
-        200,
-        {
-          user: stats[0]
-        },
-        "get user stats and downline"
+        new ApiResponse(
+          200,
+          {
+            user: stats[0]
+          },
+          "get user stats and downline"
+        )
       )
   } catch (error) {
     throw new ApiError(500, error?.message, "error while getting the user stats")
@@ -409,7 +411,7 @@ const paymentCreation = asyncHandler(async (req, res) => {
     // if (user.status === "Inactive") {
     //   throw new ApiError(400, "user must be active to create payment")
     // }
-    if(Number(Amount) !== 100){
+    if (Number(Amount) !== 100) {
       throw new ApiError(400, "payment must be 100")
     }
     const payment = await Payment.create({
@@ -482,10 +484,21 @@ const paymentRequsted = asyncHandler(async (req, res) => {
   }
 
   try {
+    const user = await User.findById(req.user?._id)
+    if (!user) {
+      throw new ApiError(404, "user not found")
+    }
+    if((user?.status === "Inactive") && (user?.earnings < 500)) {
+      throw new ApiError(400, "user must be active and have 500 earnings to request payment")
+    }
+
     const paymentRequeste = await PaymentRequeste.create({
       type,
       number,
       confirmNumber,
+      user: req.user?._id,
+      status: "pending",
+      date: Date.now()
     })
     if (!paymentRequeste) {
       throw new ApiError(400, "payment requste not create")
@@ -501,7 +514,7 @@ const paymentRequsted = asyncHandler(async (req, res) => {
         )
       )
   } catch (error) {
-    throw new ApiError(500, error?.message, "error while getting payment requested")
+    throw new ApiError(500, error?.message || "error while getting payment requested")
   }
 })
 
@@ -515,7 +528,7 @@ const paymentConfirmation = asyncHandler(async (req, res) => {
       throw new ApiError(400, "payment id is required")
     }
 
-    const payment = await Payment.findById(paymentId)
+    const payment = await Payment.findOne({ _id: paymentId, user: userId })
     if (!payment) {
       throw new ApiError(500, "payment not found")
     }
@@ -525,7 +538,7 @@ const paymentConfirmation = asyncHandler(async (req, res) => {
       throw new ApiError(400, "user not found")
     }
 
-    if ((payment.status === "pending") && (payment.Amount === 100)) {
+    if ((payment.status === "pending") && (payment.Amount > 100)) {
       // const user = await User.findByIdAndUpdate(
       //   userId,
       //   {

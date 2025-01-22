@@ -11,7 +11,9 @@ import {
   userCommission,
   getUserStats,
   paymentCreation,
-  getAllPayment
+  getAllPayment,
+  paymentRequsted,
+  paymentConfirmation
 } from "../controllers/user.controller.js";
 
 const router = Router()
@@ -25,9 +27,12 @@ router.route("/change-password").post(verifyJWT,updatePassword)
 router.route("/update-user").patch(verifyJWT,upload.single("photo"),updateUser)
 // router.route("/delete-user").delete(verifyJWT,deleteUser)
 router.route("/distribute-commision").patch(verifyJWT,userCommission)
-router.route("/get-user-stats",verifyJWT,getUserStats)
+// router.route("/get-user-stats",verifyJWT,getUserStats)
 router.route("/payment-creation").post(verifyJWT,paymentCreation)
 router.route("/getAllPayment").get(verifyJWT,getAllPayment)
+router.route("/get-user-stats").get(verifyJWT,getUserStats)
+router.route("/paymentRequest").post(verifyJWT,paymentRequsted)
+router.route("/paymentConfirmation").post(verifyJWT,paymentConfirmation)
 
 
 export default router
