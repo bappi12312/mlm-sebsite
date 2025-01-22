@@ -7,7 +7,11 @@ import {
   logoutUser,
   updatePassword,
   refreshAccessToken,
-  updateUser
+  updateUser,
+  userCommission,
+  getUserStats,
+  paymentCreation,
+  getAllPayment
 } from "../controllers/user.controller.js";
 
 const router = Router()
@@ -19,5 +23,11 @@ router.route("/logout").post(verifyJWT,logoutUser)
 router.route("/refresh-token").post(refreshAccessToken)
 router.route("/change-password").post(verifyJWT,updatePassword)
 router.route("/update-user").patch(verifyJWT,upload.single("photo"),updateUser)
+// router.route("/delete-user").delete(verifyJWT,deleteUser)
+router.route("/distribute-commision").patch(verifyJWT,userCommission)
+router.route("/get-user-stats",verifyJWT,getUserStats)
+router.route("/payment-creation").post(verifyJWT,paymentCreation)
+router.route("/getAllPayment").get(verifyJWT,getAllPayment)
+
 
 export default router

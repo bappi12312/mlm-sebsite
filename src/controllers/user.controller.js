@@ -6,7 +6,6 @@ import jwt from 'json-web-token'
 import { generateAccessAndRefreshTokens } from '../utils/genarateToken.js'
 import { genarateReferralCode } from '../utils/genarateReferralCode.js'
 import { deleteMediaFromCloudinary, uploadOnCloudinary } from '../utils/cloudinary.js'
-import redis from "redis"
 import mongoose from 'mongoose'
 import { Payment } from '../models/payment.model.js'
 import { PaymentRequeste } from '../models/paymentRequeste.model.js'
@@ -272,11 +271,11 @@ const updateUser = asyncHandler(async (req, res) => {
       await deleteMediaFromCloudinary(publicId)
     }
     const photoUrl = await uploadOnCloudinary(userPhotoLocalPath.path)
-    const photo = photoUrl.secure_url;
+    const photo = photoUrl?.secure_url;
 
     const updateFeilds = {
       ...(name && { name }), //update name if provided
-      ...(invest === 100 && { status: "Active" }),
+      ...(Number(invest) === 100 && { status: "Active" }),
       ...(photo && { photo })
     }
 
@@ -296,8 +295,7 @@ const updateUser = asyncHandler(async (req, res) => {
   } catch (error) {
     throw new ApiError(
       500,
-      error?.message,
-      "error while updating a user"
+      error?.message || "error while updating a user"
     )
   }
 
@@ -308,25 +306,30 @@ const userCommission = asyncHandler(async (req, res) => {
   const { amount = 100 } = req.body;
 
   try {
-    const user = await User.findById(req.user._id)
+    const user = await User.findById(req.user?._id)
     if (!user) {
       throw new ApiError(401, "user not found")
     }
 
+    if (Number(amount) === 100) {
+      user.status = "Active"
+      await user.save()
+    }
+
     let currentReffererId = user.referredBy;
     let level = 1
-    const commissionRates = [30, 20, 10]
+    const commissionRates = [20, 15, 10]
 
-    while (currentReffererId && level <= commissionRates.length) {
-      const sponser = await User.findById({ referalCode: currentReffererId })
-      if (sponser) {
-        const commission = (amount * commissionRates[level - 1]) / 100;
+    while (currentReffererId && level <= commissionRates.length && (user.status === "Active")) {
+      const sponser = await User.findById({ _id: currentReffererId })
+      if (sponser && (sponser.status === "Active")) {
+        const commission = (Number(amount) * commissionRates[level - 1]) / 100;
 
         sponser.earnings += commission;
-        sponser.transactions.push({
-          amount: commission,
-          fromUser: req.user?._id,
-        })
+        // sponser.transactions.push({
+        //   amount: commission,
+        //   fromUser: req.user?._id,
+        // })
 
         await sponser.save()
         currentReffererId = sponser?._id;
@@ -339,9 +342,11 @@ const userCommission = asyncHandler(async (req, res) => {
     return res
       .status(200)
       .json(
-        200,
-        {},
-        'commissions distributed.'
+        new ApiResponse(
+          200,
+          { user },
+          'commissions distributed.'
+        )
       )
   } catch (error) {
     throw new ApiError(500, error?.message, "error while distributied commission")
@@ -374,7 +379,7 @@ const getUserStats = asyncHandler(async (req, res) => {
       }
     ])
 
-    redisClient.setEx(`userStats:${req.user?._id}`, 3600, JSON.stringify(stats))
+    // redisClient.setEx(`userStats:${req.user?._id}`, 3600, JSON.stringify(stats))
     return res
       .status(200)
       .json(
@@ -396,16 +401,41 @@ const paymentCreation = asyncHandler(async (req, res) => {
   }
 
   try {
+
+    // const user = await User.findById(req.user?._id)
+    // if (!user) {
+    //   throw new ApiError(404, "user not found")
+    // }
+    // if (user.status === "Inactive") {
+    //   throw new ApiError(400, "user must be active to create payment")
+    // }
+    if(Number(Amount) !== 100){
+      throw new ApiError(400, "payment must be 100")
+    }
     const payment = await Payment.create({
       FromNumber,
       ToNumber,
       Amount,
-      status: "pending"
+      status: "pending",
+      PaymentDate: new Date().toISOString(),
+      user: req.user?._id,
     })
 
     if (!payment) {
       throw new ApiError(400, "payment not create")
     }
+
+    // if (payment.Amount === 500) {
+    //   return res
+    //     .status(200)
+    //     .json(
+    //       new ApiResponse(
+    //         200,
+    //         { payment,user },
+    //         "you will get 500 commission very soon till you do your job successfully"
+    //       )
+    //     )
+    // }
 
     return res
       .status(200)
@@ -413,11 +443,31 @@ const paymentCreation = asyncHandler(async (req, res) => {
         new ApiResponse(
           200,
           { payment },
-          "payment create"
+          "if your payment is successful then your account will be activated after some time"
         )
       )
   } catch (error) {
-    throw new ApiError(500, error?.message, "error while creating payment")
+    throw new ApiError(500, error?.message || "error while creating payment")
+  }
+})
+
+const getAllPayment = asyncHandler(async (req, res) => {
+  try {
+    const payments = await Payment.find()
+    if (!payments) {
+      throw new ApiError(404, "payments not found")
+    }
+    return res
+      .status(200)
+      .json(
+        new ApiResponse(
+          200,
+          { payments },
+          "all payments sent successfully"
+        )
+      )
+  } catch (error) {
+    throw new ApiError(500, error?.message || "error while getting all payments")
   }
 })
 
@@ -553,5 +603,6 @@ export {
   paymentCreation,
   paymentConfirmation,
   paymentRequsted,
-  allUsers
+  allUsers,
+  getAllPayment,
 }

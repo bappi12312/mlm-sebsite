@@ -17,6 +17,14 @@ const paymentSchema = new mongoose.Schema({
     type: String,
     enum: ["pending","completed"],
     default: "pending"
+  },
+  PaymentDate: {
+    type: Date,
+    default: Date.now,
+  },
+  user: {
+    type: String,
+    required: true,
   }
 },{timestamps: true})
 
