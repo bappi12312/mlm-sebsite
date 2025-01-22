@@ -519,6 +519,27 @@ const paymentRequsted = asyncHandler(async (req, res) => {
 })
 
 // admin
+
+const getAllPaymentRequeste = asyncHandler(async (req, res) => { 
+  try {
+    const paymentRequestes = await PaymentRequeste.find()
+    if (!paymentRequestes) {
+      throw new ApiError(404, "payment requestes not found")
+    }
+    return res
+      .status(200)
+      .json(
+        new ApiResponse(
+          200,
+          { paymentRequestes },
+          "all payment requestes sent successfully"
+        )
+      )
+  } catch (error) {
+    throw new ApiError(500, error?.message || "error while getting all payment requestes")
+  }
+})
+
 // payment confirmation
 const paymentConfirmation = asyncHandler(async (req, res) => {
   try {
@@ -528,7 +549,7 @@ const paymentConfirmation = asyncHandler(async (req, res) => {
       throw new ApiError(400, "payment id is required")
     }
 
-    const payment = await Payment.findOne({ _id: paymentId, user: userId })
+    const payment = await Payment.findById(paymentId)
     if (!payment) {
       throw new ApiError(500, "payment not found")
     }
@@ -538,7 +559,7 @@ const paymentConfirmation = asyncHandler(async (req, res) => {
       throw new ApiError(400, "user not found")
     }
 
-    if ((payment.status === "pending") && (payment.Amount > 100)) {
+    if ((payment.status === "pending") && (payment.Amount >= 100)) {
       // const user = await User.findByIdAndUpdate(
       //   userId,
       //   {
@@ -552,17 +573,19 @@ const paymentConfirmation = asyncHandler(async (req, res) => {
       // ).select("-password -refreshToken")
       payment.status = "completed"
       user.status = "Active"
+
+      await payment.save()
+      await user.save()
     }
 
-    await payment.save({ validateBeforeSave: false })
-    await user.save({ validateBeforeSave: false })
+
 
     return res
       .status(200)
       .json(
         new ApiResponse(
           200,
-          { user },
+          { user,payment },
           "payment confirmation succesfully"
         )
       )
@@ -572,7 +595,7 @@ const paymentConfirmation = asyncHandler(async (req, res) => {
 })
 
 // get all users by admin
-const allUsers = asyncHandler(async (req, res) => {
+const getAllUsers = asyncHandler(async (req, res) => {
   try {
     const users = await User.aggregate([
       {
@@ -616,6 +639,7 @@ export {
   paymentCreation,
   paymentConfirmation,
   paymentRequsted,
-  allUsers,
+  getAllUsers,
   getAllPayment,
+  getAllPaymentRequeste
 }

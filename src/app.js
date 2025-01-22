@@ -4,12 +4,9 @@ import cookieParser from 'cookie-parser'
 
 const app = express()
 
-// app.get('/',(req,res) => {
-//   res.send('Hello, Express!');
-// })
-// app.listen(8000, () => {
-//   console.log(`Server is running at http://localhost:${PORT}`);
-// });
+app.get('/',(req,res) => {
+  res.send('Hello, Express!');
+})
 
 app.use(cors({
   origin: ['*',],

@@ -13,7 +13,9 @@ import {
   paymentCreation,
   getAllPayment,
   paymentRequsted,
-  paymentConfirmation
+  paymentConfirmation,
+  getAllPaymentRequeste,
+  getAllUsers
 } from "../controllers/user.controller.js";
 
 const router = Router()
@@ -32,7 +34,9 @@ router.route("/payment-creation").post(verifyJWT,paymentCreation)
 router.route("/getAllPayment").get(verifyJWT,getAllPayment)
 router.route("/get-user-stats").get(verifyJWT,getUserStats)
 router.route("/paymentRequest").post(verifyJWT,paymentRequsted)
-router.route("/paymentConfirmation").post(verifyJWT,paymentConfirmation)
+router.route("/payment-confirmation").patch(verifyJWT,paymentConfirmation)
+router.route("/get-allPayment-request").get(verifyJWT,getAllPaymentRequeste)
+router.route("/get-all-users").get(verifyJWT,getAllUsers)
 
 
 export default router
