@@ -10,6 +10,7 @@ app.get('/',(req,res) => {
 
 app.use(cors({
   origin: ['*',"http://localhost:3000"],
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
   credentials: true
 }))
 app.use(express.json({limit: '16kb'}))
