@@ -8,11 +8,14 @@ app.get('/',(req,res) => {
   res.send('Hello, Express!');
 })
 
-app.use(cors({
-  origin: ["http://localhost:3000"],
-  methods: ['GET', 'POST', 'PUT', 'DELETE'],
-  credentials: true
-}))
+app.use(
+  cors({
+    origin: ['http://localhost:3000'], // Allow specific frontend origin
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
+    credentials: true, // Allow credentials
+  })
+);
+
 app.use(express.json())
 app.use(cookieParser())
 app.use(express.urlencoded({extended: true,limit: '16kb'}))
