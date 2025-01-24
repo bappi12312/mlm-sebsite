@@ -10,12 +10,6 @@ import mongoose from 'mongoose'
 import { Payment } from '../models/payment.model.js'
 import { PaymentRequeste } from '../models/paymentRequeste.model.js'
 
-// const redisClient = redis.createClient()
-
-// redisClient.on('error', (err) => console.log('Redis error', err)
-// )
-// redisClient.connect()
-
 
 const userRegister = asyncHandler(async (req, res) => {
   const { name, email, password, referredBy } = req.body;
