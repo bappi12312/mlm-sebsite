@@ -353,6 +353,19 @@ const userCommission = asyncHandler(async (req, res) => {
   }
 })
 
+const getSingleUser = asyncHandler(async (req, res) => {
+  try {
+    // const user = await User.findById(req.params.id)
+    // return res
+    //   .status(200)
+    //   .json(new ApiResponse(200, { user }, "get a user"))
+
+      res.json({ message: "Profile fetched successfully" });
+  } catch (error) {
+    throw new ApiError(500, error?.message || "error while get a user")
+  }
+})
+
 // get user earnings and downline states
 const getUserStats = asyncHandler(async (req, res) => {
   try {
@@ -641,5 +654,6 @@ export {
   paymentRequsted,
   getAllUsers,
   getAllPayment,
-  getAllPaymentRequeste
+  getAllPaymentRequeste,
+  getSingleUser
 }

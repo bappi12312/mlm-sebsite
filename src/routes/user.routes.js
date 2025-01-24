@@ -15,7 +15,8 @@ import {
   paymentRequsted,
   paymentConfirmation,
   getAllPaymentRequeste,
-  getAllUsers
+  getAllUsers,
+  getSingleUser
 } from "../controllers/user.controller.js";
 
 const router = Router()
@@ -36,6 +37,7 @@ router.route("/paymentRequest").post(verifyJWT,paymentRequsted)
 router.route("/payment-confirmation").patch(verifyJWT,paymentConfirmation)
 router.route("/get-allPayment-request").get(verifyJWT,getAllPaymentRequeste)
 router.route("/get-all-users").get(verifyJWT,getAllUsers)
+router.route("/profile").get(getSingleUser)
 
 
 export default router
