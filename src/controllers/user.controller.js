@@ -269,52 +269,78 @@ const userCommission = asyncHandler(async (req, res) => {
   const { amount = 100 } = req.body;
 
   try {
-    const user = await User.findById(req.user?._id)
+    const user = await User.findById(req.user?._id);
     if (!user) {
-      throw new ApiError(401, "user not found")
+      throw new ApiError(401, "User not found");
     }
 
+    // Activate user if the amount is 100
     if (Number(amount) === 100) {
-      user.status = "Active"
-      await user.save()
+      user.status = "Active";
+      await user.save();
     }
 
-    let currentReffererId = user.referredBy;
-    let level = 1
-    const commissionRates = [20, 15, 10]
+    // Fetch the referral hierarchy
+    const hierarchy = await User.aggregate([
+      {
+        $graphLookup: {
+          from: "users", // Collection name
+          startWith: "$_id",
+          connectFromField: "_id",
+          connectToField: "referralId", // Adjust based on your schema
+          as: "referrals",
+          maxDepth: 2, // Fetch up to 3 levels
+          depthField: "level", // Adds level info
+        },
+      },
+      {
+        $match: { _id: mongoose.Types.ObjectId(user._id) },
+      },
+    ]);
 
-    while (currentReffererId && level <= commissionRates.length && (user.status === "Active")) {
-      const sponser = await User.findById({ _id: currentReffererId })
-      if (sponser && (sponser.status === "Active")) {
-        const commission = (Number(amount) * commissionRates[level - 1]) / 100;
+    if (!hierarchy.length) {
+      throw new ApiError(404, "No referral hierarchy found for this user");
+    }
 
-        sponser.earnings += commission;
-        // sponser.transactions.push({
-        //   amount: commission,
-        //   fromUser: req.user?._id,
-        // })
+    const rootUser = hierarchy[0];
+    const referrals = rootUser.referrals;
 
-        await sponser.save()
-        currentReffererId = sponser?._id;
-        level++
-      } {
-        break;
+    const commissionRates = { 1: 0.3, 2: 0.2, 3: 0.05 }; // Level 1: 30%, Level 2: 20%, Level 3: 5%
+    const commissionUpdates = [];
+
+    // Calculate commissions
+    referrals.forEach((referral) => {
+      const level = referral.level + 1; // Adjust level
+      const rate = commissionRates[level];
+      if (rate) {
+        const commission = Number(amount) * rate;
+        commissionUpdates.push({
+          updateOne: {
+            filter: { _id: referral._id },
+            update: { $inc: { earnings: commission } },
+          },
+        });
       }
+    });
+
+    // Perform batch updates
+    if (commissionUpdates.length > 0) {
+      await User.bulkWrite(commissionUpdates);
     }
 
-    return res
-      .status(200)
-      .json(
-        new ApiResponse(
-          200,
-          { user },
-          'commissions distributed.'
-        )
+    return res.status(200).json(
+      new ApiResponse(
+        200,
+        { rootUser, referrals },
+        "Commissions distributed successfully"
       )
+    );
   } catch (error) {
-    throw new ApiError(500, error?.message, "error while distributied commission")
+    console.error("Error calculating commissions:", error.message);
+    throw new ApiError(500, error.message || "Error while distributing commission");
   }
-})
+});
+
 
 const getSingleUser = asyncHandler(async (req, res) => {
   try {
