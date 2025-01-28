@@ -172,7 +172,7 @@ const updatePassword = asyncHandler(async (req, res) => {
 })
 
 const refreshAccessToken = asyncHandler(async (req, res) => {
-  const incomingRefreshToken = req.cookies.refreshToken || req.body.refreshToken
+  const incomingRefreshToken = req.cookies?.refreshToken || req.body?.refreshToken || req.headers?.authorization?.split(" ")[1];
 
   if (!incomingRefreshToken) {
     throw new ApiError(401, "unauthorized request")
