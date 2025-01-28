@@ -147,37 +147,6 @@ const logoutUser = asyncHandler(async (req, res) => {
 });
 
 
-// // get single user;
-// const getSingleUser = asyncHandler(async (req, res) => {
-//   const userId = req.params.id;
-
-//   try {
-//     const cachedUser = await redisClient.get(`user:${userId}`)
-//     if (cachedUser) {
-//       return res.status(200).json(JSON.parse(cachedUser));
-//     }
-
-//     // if not in cache fetch from database
-//     const user = await User.findById(userId)
-//     if (!user) {
-//       throw new ApiError(400, "user not found")
-//     }
-//     await redisClient.setEx(`user:${userId}`, 3600, JSON.stringify(user))
-
-//     return res
-//       .status(200)
-//       .json(
-//         new ApiResponse(
-//           200,
-//           { user },
-//           "user get successfully"
-//         )
-//       )
-//   } catch (error) {
-//     throw new ApiError(500, error?.message, "error while get a user")
-//   }
-// })
-
 // update a user password
 const updatePassword = asyncHandler(async (req, res) => {
   try {
@@ -349,12 +318,12 @@ const userCommission = asyncHandler(async (req, res) => {
 
 const getSingleUser = asyncHandler(async (req, res) => {
   try {
-    // const user = await User.findById(req.params.id)
-    // return res
-    //   .status(200)
-    //   .json(new ApiResponse(200, { user }, "get a user"))
+    const user = await User.findById(req.params.id)
+    return res
+      .status(200)
+      .json(new ApiResponse(200, { user }, "get a user"))
 
-      res.json({ message: "Profile fetched successfully" });
+      // res.json({ message: "Profile fetched successfully" });
   } catch (error) {
     throw new ApiError(500, error?.message || "error while get a user")
   }
@@ -434,24 +403,12 @@ const paymentCreation = asyncHandler(async (req, res) => {
       throw new ApiError(400, "payment not create")
     }
 
-    // if (payment.Amount === 500) {
-    //   return res
-    //     .status(200)
-    //     .json(
-    //       new ApiResponse(
-    //         200,
-    //         { payment,user },
-    //         "you will get 500 commission very soon till you do your job successfully"
-    //       )
-    //     )
-    // }
-
     return res
       .status(200)
       .json(
         new ApiResponse(
           200,
-          { payment },
+          {  },
           "if your payment is successful then your account will be activated after some time"
         )
       )
