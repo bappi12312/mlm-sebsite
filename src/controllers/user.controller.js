@@ -294,7 +294,7 @@ const userCommission = asyncHandler(async (req, res) => {
         },
       },
       {
-        $match: { _id: mongoose.Types.ObjectId(user._id) },
+        $match: { _id: new mongoose.Types.ObjectId(user._id) },
       },
     ]);
 
@@ -344,7 +344,7 @@ const userCommission = asyncHandler(async (req, res) => {
 
 const getSingleUser = asyncHandler(async (req, res) => {
   try {
-    const user = await User.findById(req.params.id)
+    const user = await User.findById(req.params.id || req.user?._id).select(" -refreshToken")
     return res
       .status(200)
       .json(new ApiResponse(200, { user }, "get a user"))
@@ -611,10 +611,6 @@ const getAllUsers = asyncHandler(async (req, res) => {
 
   }
 })
-
-
-
-
 
 
 export {
