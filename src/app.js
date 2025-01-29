@@ -16,9 +16,14 @@ app.use(
   })
 );
 app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(err.status || 500).json({
-    message: err.message || "occur an error",
+  const statusCode = err.statusCode || 500;
+  const message = err.message || 'Internal Server Error';
+  
+  res.status(statusCode).json({
+    success: false,
+    statusCode,
+    message,
+    ...(process.env.NODE_ENV === 'development' && { stack: err.stack })
   });
 });
 
