@@ -9,6 +9,7 @@ import { Payment } from '../models/payment.model.js'
 import { PaymentRequeste } from '../models/paymentRequeste.model.js'
 import jwt from 'jsonwebtoken'
 import { distributeUplineCommissions } from './commission.controller.js'
+import mongoose, { mongo } from 'mongoose'
 
 
 const userRegister = asyncHandler(async (req, res) => {
@@ -499,43 +500,37 @@ const getAllPaymentRequeste = asyncHandler(async (req, res) => {
 
 // payment confirmation
 const paymentConfirmation = asyncHandler(async (req, res) => {
+  const session = await mongoose.startSession()
+  session.startTransaction()
   try {
-    const { paymentId } = req.body;
-    const userId = req.user?._id;
-    if (!paymentId) {
-      throw new ApiError(400, "payment id is required")
+    const { paymentId, userId } = req.body;
+    if (!paymentId || !userId) {
+      throw new ApiError(400, "Both payment ID and user ID are required")
     }
 
-    const payment = await Payment.findById(paymentId)
-    if (!payment) {
-      throw new ApiError(500, "payment not found")
-    }
+    const [payment, user] = await Promise.all([
+      Payment.findById(paymentId).session(session),
+      User.findById(userId).session(session).select("-password -refreshToken")
+    ])
 
-    const user = await User.findById(userId)
-    if (!user) {
-      throw new ApiError(400, "user not found")
-    }
+    if (!payment) throw new ApiError(404, "payment not found")
+    if (!user) throw new ApiError(404, "user not found")
 
-    if ((payment.status === "pending") && (payment.Amount >= 100)) {
-      // const user = await User.findByIdAndUpdate(
-      //   userId,
-      //   {
-      //     $set: {
-      //       status: "Active"
-      //     }
-      //   },
-      //   {
-      //     new: true
-      //   }
-      // ).select("-password -refreshToken")
+      if(payment.status !== "pending"){
+        throw new ApiError(400, "payment already confirmed")
+      }
+      if(payment.Amount < 100){
+        throw new ApiError(400, "payment must be 100")
+      }
       payment.status = "completed"
       user.status = "Active"
 
-      await payment.save()
-      await user.save()
-    }
+      await Promise.all([
+        payment.save({ session }),
+        user.save({ session })
+      ])
 
-
+      await session.commitTransaction()
 
     return res
       .status(200)
@@ -547,7 +542,13 @@ const paymentConfirmation = asyncHandler(async (req, res) => {
         )
       )
   } catch (error) {
-    throw new ApiError(500, error?.message, "error while getting payment confirmation")
+    await session.abortTransaction();
+    const statusCode = error.statusCode || 500;
+    const message = error.message || "Payment confirmation failed";
+    throw new ApiError(statusCode, message, error?.errors);
+  }
+  finally {
+    session.endSession()
   }
 })
 
