@@ -2,13 +2,13 @@ import { asyncHandler } from '../utils/asyncHandler.js'
 import { ApiError } from '../utils/ApiError.js'
 import { ApiResponse } from '../utils/ApiResponse.js'
 import { User } from '../models/user.model.js'
-import jwt from 'json-web-token'
 import { generateAccessAndRefreshTokens } from '../utils/genarateToken.js'
 import { genarateReferralCode } from '../utils/genarateReferralCode.js'
 import { deleteMediaFromCloudinary, uploadOnCloudinary } from '../utils/cloudinary.js'
 import mongoose from 'mongoose'
 import { Payment } from '../models/payment.model.js'
 import { PaymentRequeste } from '../models/paymentRequeste.model.js'
+import jwt from 'jsonwebtoken'
 
 
 const userRegister = asyncHandler(async (req, res) => {
@@ -172,33 +172,49 @@ const updatePassword = asyncHandler(async (req, res) => {
 })
 
 const refreshAccessToken = asyncHandler(async (req, res) => {
-  const incomingRefreshToken = req.cookies?.refreshToken || req.body?.refreshToken || req.headers?.authorization?.split(" ")[1];
+  const incomingRefreshToken =
+    req.cookies?.refreshToken ||
+    req.body?.refreshToken ||
+    req.headers?.authorization?.split(" ")[1];
 
   if (!incomingRefreshToken) {
-    throw new ApiError(401, "unauthorized request")
+    throw new ApiError(401, "Unauthorized request: No refresh token provided");
   }
 
+  console.log("Incoming Refresh Token:", incomingRefreshToken);
+
   try {
+    // Verify the token
     const decodedToken = jwt.verify(
       incomingRefreshToken,
       process.env.REFRESH_TOKEN_SECRET
-    )
+    );
 
-    const user = await User.findById(decodedToken?._id)
+    console.log("Decoded Token:", decodedToken);
+
+    const user = await User.findById(decodedToken?._id);
+    console.log("User from DB:", user);
 
     if (!user) {
-      throw new ApiError(401, "Invalid refresh token")
+      throw new ApiError(401, "Invalid refresh token: User not found");
     }
 
+    // Ensure the token matches securely
     if (incomingRefreshToken !== user?.refreshToken) {
-      throw new ApiError(401, "Refresh token expired or used")
+      throw new ApiError(401, "Refresh token expired or already used");
     }
 
+    // Generate new tokens
     const options = {
       httpOnly: true,
-      secure: true
-    }
-    const { accessToken, refreshToken } = await generateAccessAndRefreshTokens(user._id)
+      secure: true,
+    };
+    const { accessToken, refreshToken } = await generateAccessAndRefreshTokens(
+      user._id
+    );
+
+    console.log("Generated Tokens:", { accessToken, refreshToken });
+
     return res
       .status(200)
       .cookie("accessToken", accessToken, options)
@@ -209,12 +225,13 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
           { accessToken, refreshToken },
           "Access token refreshed successfully"
         )
-      )
+      );
   } catch (error) {
-    throw new ApiError(500, error?.message || "Invalid refresh token")
+    console.error("Error during token refresh:", error.message);
+    throw new ApiError(500, error?.message || "Invalid refresh token");
   }
+});
 
-})
 
 // update a user
 const updateUser = asyncHandler(async (req, res) => {
@@ -287,7 +304,7 @@ const userCommission = asyncHandler(async (req, res) => {
           from: "users", // Collection name
           startWith: "$_id",
           connectFromField: "_id",
-          connectToField: "referralId", // Adjust based on your schema
+          connectToField: "referredBy", // Adjust based on your schema
           as: "referrals",
           maxDepth: 2, // Fetch up to 3 levels
           depthField: "level", // Adds level info
