@@ -1,55 +1,53 @@
 import mongoose from "mongoose";
-import { asyncHandler } from "../utils/asyncHandler.js";
 import { ApiError } from "../utils/ApiError.js";
-import { ApiResponse } from "../utils/ApiResponse.js";
 import { User } from "../models/user.model.js";
 
-const distributeUplineCommissions = async(userId,amount) => {
-  const session = await mongoose.startSession()
-  session.startTransaction()
+const distributeUplineCommissions = async (userId, amount) => {
+  const session = await mongoose.startSession();
+  session.startTransaction();
+  console.log("distributeUplineCommissions");
 
   try {
-    const upline = await getUplineHierarchy(userId);
-    if(upline.length === 0){
-      throw new ApiError(400, "No upline found")
+    const upline = await getUplineHierarchy(userId, session);
+    if (upline.length === 0) {
+      throw new ApiError(400, "No upline found");
     }
-    const commissionUpdates = calculateCommissions(upline,amount);
+    const commissionUpdates = calculateCommissions(upline, amount);
 
-    await User.bulkWrite(commissionUpdates,{session})
+    await User.bulkWrite(commissionUpdates, { session });
 
-    await logTransactions(upline,userId,amount,session)
+    await logTransactions(upline, userId, amount, session);
 
-    await session.commitTransaction()
-
+    await session.commitTransaction();
   } catch (error) {
-    await session.abortTransaction()
-    throw new ApiError(500, "faild to distribute commission")
+    await session.abortTransaction();
+    throw new ApiError(500, "Failed to distribute commission: " + error.message);
   } finally {
-    session.endSession()
+    session.endSession();
   }
-}
+};
 
-const getUplineHierarchy = async (userId) => {
-  const upline = []
-  let currentUser = await User.findById(userId).session(session)
+const getUplineHierarchy = async (userId, session) => {
+  const upline = [];
+  let currentUser = await User.findById(userId).session(session);
 
-  while(currentUser.referredBy) {
-    const uplineUser = await User.findById(currentUser.referredBy).session(session)
-    if(!uplineUser) {
-      break
+  while (currentUser.referredBy) {
+    const uplineUser = await User.findById(currentUser.referredBy).session(session);
+    if (!uplineUser) {
+      break;
     }
     upline.push({
       _id: uplineUser._id,
-      level: upline.length + 1
-    })
-    currentUser = uplineUser
+      level: upline.length + 1,
+    });
+    currentUser = uplineUser;
   }
 
   return upline;
-}
+};
 
 const calculateCommissions = (upline, amount) => {
-  const commissionRates = { 1: 0.2, 2: 0.15, 3: 0.10 }; // Level 1: 20%, Level 2: 15%, Level 3: 10%
+  const commissionRates = { 1: 0.2, 2: 0.15, 3: 0.1 }; // Level 1: 20%, Level 2: 15%, Level 3: 10%
   const commissionUpdates = [];
 
   upline.forEach((user) => {
@@ -68,8 +66,8 @@ const calculateCommissions = (upline, amount) => {
   return commissionUpdates;
 };
 
-
 const logTransactions = async (upline, fromUserId, amount, session) => {
+  const commissionRates = { 1: 0.2, 2: 0.15, 3: 0.1 }; // Level 1: 20%, Level 2: 15%, Level 3: 10%
   const transactionLogs = upline.map((user) => ({
     updateOne: {
       filter: { _id: user._id },

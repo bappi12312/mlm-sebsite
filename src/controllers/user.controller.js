@@ -5,7 +5,6 @@ import { User } from '../models/user.model.js'
 import { generateAccessAndRefreshTokens } from '../utils/genarateToken.js'
 import { genarateReferralCode } from '../utils/genarateReferralCode.js'
 import { deleteMediaFromCloudinary, uploadOnCloudinary } from '../utils/cloudinary.js'
-import mongoose from 'mongoose'
 import { Payment } from '../models/payment.model.js'
 import { PaymentRequeste } from '../models/paymentRequeste.model.js'
 import jwt from 'jsonwebtoken'
@@ -287,18 +286,25 @@ const userCommission = asyncHandler(async (req, res) => {
   const { amount = 100 } = req.body;
 
   try {
-    distributeUplineCommissions(req.user?._id, amount)
-    .then(() => {
-      return res
+    // Distribute commissions to the upline
+    await distributeUplineCommissions(req.user?._id, amount);
+
+    // Send success response
+    return res
       .status(200)
-      .json(new ApiResponse(200, {}, "Commissions distributed successfully"))
-    })
-    .catch((error) => {
-      throw new ApiError(500, error.message || "Error while distributing commission");
-    })
+      .json(new ApiResponse(200, {}, "Commissions distributed successfully"));
   } catch (error) {
     console.error("Error calculating commissions:", error.message);
-    throw new ApiError(500, error.message || "Error while distributing commission");
+
+    // Send error response
+    return res
+      .status(error.statusCode || 500)
+      .json(
+        new ApiError(
+          error.statusCode || 500,
+          error.message || "Error while distributing commission"
+        )
+      );
   }
 });
 
@@ -310,7 +316,7 @@ const getSingleUser = asyncHandler(async (req, res) => {
       .status(200)
       .json(new ApiResponse(200, { user }, "get a user"))
 
-      // res.json({ message: "Profile fetched successfully" });
+    // res.json({ message: "Profile fetched successfully" });
   } catch (error) {
     throw new ApiError(500, error?.message || "error while get a user")
   }
@@ -395,7 +401,7 @@ const paymentCreation = asyncHandler(async (req, res) => {
       .json(
         new ApiResponse(
           200,
-          {  },
+          {},
           "if your payment is successful then your account will be activated after some time"
         )
       )
@@ -439,7 +445,7 @@ const paymentRequsted = asyncHandler(async (req, res) => {
     if (!user) {
       throw new ApiError(404, "user not found")
     }
-    if((user?.status === "Inactive") && (user?.earnings < 500)) {
+    if ((user?.status === "Inactive") && (user?.earnings < 500)) {
       throw new ApiError(400, "user must be active and have 500 earnings to request payment")
     }
 
@@ -471,7 +477,7 @@ const paymentRequsted = asyncHandler(async (req, res) => {
 
 // admin
 
-const getAllPaymentRequeste = asyncHandler(async (req, res) => { 
+const getAllPaymentRequeste = asyncHandler(async (req, res) => {
   try {
     const paymentRequestes = await PaymentRequeste.find()
     if (!paymentRequestes) {
@@ -536,7 +542,7 @@ const paymentConfirmation = asyncHandler(async (req, res) => {
       .json(
         new ApiResponse(
           200,
-          { user,payment },
+          { user, payment },
           "payment confirmation succesfully"
         )
       )
