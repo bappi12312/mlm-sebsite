@@ -321,6 +321,7 @@ const updateUser = asyncHandler(async (req, res) => {
       .status(200)
       .json(new ApiResponse(200, updatedUser, 'User updated successfully'));
   });
+});
 
 // distribute commission for every users
 const userCommission = asyncHandler(async (req, res) => {
