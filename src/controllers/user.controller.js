@@ -287,7 +287,7 @@ const userCommission = asyncHandler(async (req, res) => {
 
   try {
     // Distribute commissions to the upline
-    await distributeUplineCommissions(req.user?._id, amount);
+    await distributeUplineCommissions(req.user?._id, Number(amount));
 
     // Send success response
     return res
@@ -560,6 +560,13 @@ const getAllUsers = asyncHandler(async (req, res) => {
           _id: "$status",
           users: { $push: "$$ROOT" }
         }
+      },
+      {
+        $project: {
+          _id: 0,
+          status: "$_id",
+          users: 1
+      },
       }
     ])
     if (!(users.length > 0)) {
@@ -575,7 +582,7 @@ const getAllUsers = asyncHandler(async (req, res) => {
         )
       )
   } catch (error) {
-
+    throw new ApiError(500, error?.message || "error while getting all users")
   }
 })
 
