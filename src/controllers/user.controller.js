@@ -9,6 +9,7 @@ import mongoose from 'mongoose'
 import { Payment } from '../models/payment.model.js'
 import { PaymentRequeste } from '../models/paymentRequeste.model.js'
 import jwt from 'jsonwebtoken'
+import { distributeUplineCommissions } from './commission.controller.js'
 
 
 const userRegister = asyncHandler(async (req, res) => {
@@ -286,72 +287,15 @@ const userCommission = asyncHandler(async (req, res) => {
   const { amount = 100 } = req.body;
 
   try {
-    const user = await User.findById(req.user?._id);
-    if (!user) {
-      throw new ApiError(401, "User not found");
-    }
-
-    // Activate user if the amount is 100
-    if (Number(amount) === 100) {
-      user.status = "Active";
-      await user.save();
-    }
-
-    // Fetch the referral hierarchy
-    const hierarchy = await User.aggregate([
-      {
-        $graphLookup: {
-          from: "users", // Collection name
-          startWith: "$_id",
-          connectFromField: "_id",
-          connectToField: "referredBy", // Adjust based on your schema
-          as: "referrals",
-          maxDepth: 2, // Fetch up to 3 levels
-          depthField: "level", // Adds level info
-        },
-      },
-      {
-        $match: { _id: new mongoose.Types.ObjectId(user._id) },
-      },
-    ]);
-
-    if (!hierarchy.length) {
-      throw new ApiError(404, "No referral hierarchy found for this user");
-    }
-
-    const rootUser = hierarchy[0];
-    const referrals = rootUser.referrals;
-
-    const commissionRates = { 1: 0.3, 2: 0.2, 3: 0.05 }; // Level 1: 30%, Level 2: 20%, Level 3: 5%
-    const commissionUpdates = [];
-
-    // Calculate commissions
-    referrals.forEach((referral) => {
-      const level = referral.level + 1; // Adjust level
-      const rate = commissionRates[level];
-      if (rate) {
-        const commission = Number(amount) * rate;
-        commissionUpdates.push({
-          updateOne: {
-            filter: { _id: referral._id },
-            update: { $inc: { earnings: commission } },
-          },
-        });
-      }
-    });
-
-    // Perform batch updates
-    if (commissionUpdates.length > 0) {
-      await User.bulkWrite(commissionUpdates);
-    }
-
-    return res.status(200).json(
-      new ApiResponse(
-        200,
-        { rootUser, referrals },
-        "Commissions distributed successfully"
-      )
-    );
+    distributeUplineCommissions(req.user?._id, amount)
+    .then(() => {
+      return res
+      .status(200)
+      .json(new ApiResponse(200, {}, "Commissions distributed successfully"))
+    })
+    .catch((error) => {
+      throw new ApiError(500, error.message || "Error while distributing commission");
+    })
   } catch (error) {
     console.error("Error calculating commissions:", error.message);
     throw new ApiError(500, error.message || "Error while distributing commission");
