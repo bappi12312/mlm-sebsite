@@ -110,4 +110,7 @@ userSchema.methods.generateRefreshToken = function () {
 };
 
 
+userSchema.index({ referalCode: 1 }, { unique: true });
+userSchema.index({ referredBy: 1 }); // For upline hierarchy lookups
+
 export const User = mongoose.model("User", userSchema)
