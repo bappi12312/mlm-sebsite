@@ -556,9 +556,15 @@ const getAllUsers = asyncHandler(async (req, res) => {
   try {
     const users = await User.aggregate([
       {
-        $group: {
-          _id: "$status",
-          users: { $push: "$$ROOT" }
+        $match: { status: "Inactive" }
+      },
+      {
+        $project: {
+          _id: 1,
+          name: 1,
+          email: 1,
+          status: 1,
+          referalCode: 1
         }
       }
     ])
@@ -570,7 +576,7 @@ const getAllUsers = asyncHandler(async (req, res) => {
       .json(
         new ApiResponse(
           200,
-          { users },
+          { users: users[0] },
           "all users sent successfully"
         )
       )
