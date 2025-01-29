@@ -21,6 +21,13 @@ const distributeUplineCommissions = async (userId, amount) => {
     await session.commitTransaction();
   } catch (error) {
     await session.abortTransaction();
+  
+    // Preserve existing API errors
+    if (error instanceof ApiError) {
+      throw error;  // Propagate existing API errors
+    }
+    
+    // Wrap other errors in generic API error
     throw new ApiError(500, "Failed to distribute commission: " + error.message);
   } finally {
     session.endSession();
