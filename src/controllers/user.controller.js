@@ -11,59 +11,113 @@ import jwt from 'jsonwebtoken'
 import { distributeUplineCommissions } from './commission.controller.js'
 import mongoose, { mongo } from 'mongoose'
 
+const withTransaction = async (operations) => {
+  const session = await mongoose.startSession();
+  try {
+    session.startTransaction();
+    const result = await operations(session);
+    await session.commitTransaction();
+    return result;
+  } catch (error) {
+    await session.abortTransaction();
+    throw error;
+  } finally {
+    session.endSession();
+  }
+};
 
 const userRegister = asyncHandler(async (req, res) => {
   const { name, email, password, referredBy } = req.body;
 
-  if (!name?.trim() || !email?.trim() || !password?.trim()) {
-    throw new ApiError(400, "All fields are required");
+  const requiredFields = { name, email, password };
+  if (Object.values(requiredFields).some((field) => !field?.trim())) {
+    throw new ApiError(400, 'All fields are required');
   }
 
   try {
-    const emailNormalized = email.toLowerCase().trim();
-    let referrer = referredBy
-      ? await User.findOne({ referalCode: referredBy.trim() })
-      : null;
+    return withTransaction(async (session) => {
+      const emailNormalized = email.toLowerCase().trim();
+      const [existingUser, referrer] = await Promise.all([
+        User.findOne({ email: emailNormalized }).session(session),
+        referredBy ? User.findOne({ referalCode: referredBy.trim() }).session(session) : null,
+      ])
 
-    if (referredBy && !referrer) {
-      return res.status(400).json({ message: "Invalid referral code." });
-    }
+      if (existingUser) {
+        throw new ApiError(400, "User already exists");
+      }
 
-    const existedUser = await User.findOne({ email: emailNormalized });
-    if (existedUser) {
-      throw new ApiError(400, "User already exists");
-    }
+      if (referredBy && !referrer) {
+        throw new ApiError(400, "Invalid referral code");
+      }
 
-    const referalCode = await genarateReferralCode();
+      const newUser = await User.create({
+        name,
+        email: emailNormalized,
+        password,
+        referredBy: referrer?._id || null,
+        referalCode: await genarateReferralCode(),
+        role: "user",
+        status: "Inactive",
+        photo: "",
+        downline: [],
+      }
+      , { session });
 
-    const newUser = new User({
-      name,
-      email: emailNormalized,
-      password,
-      referredBy: referrer?._id || null,
-      referalCode,
-      role: "user",
-      status: "Inactive",
-      photo: "",
-      downline: [],
+      if (referrer) {
+        referrer.downline.push(newUser._id);
+        await referrer.save({ session });
+      }
+      const { password: _, ...safeUserData } = newUser[0].toObject();
+
+      return res
+        .status(200)
+        .json(new ApiResponse(200, { user: safeUserData }, "User created successfully"));
+
     });
+    // const emailNormalized = email.toLowerCase().trim();
+    // let referrer = referredBy
+    //   ? await User.findOne({ referalCode: referredBy.trim() })
+    //   : null;
 
-    if (referrer) {
-      // const sponser = await User.findById(referrer.referredBy);
-      // if (sponser) {
-      //   sponser.downline.push(newUser._id);
-      //   await sponser.save();
-      // }
-      referrer.downline.push(newUser?._id)
-      referrer.save()
-    }
+    // if (referredBy && !referrer) {
+    //   return res.status(400).json({ message: "Invalid referral code." });
+    // }
 
-    await newUser.save();
+    // const existedUser = await User.findOne({ email: emailNormalized });
+    // if (existedUser) {
+    //   throw new ApiError(400, "User already exists");
+    // }
 
-    const { password: _, ...safeUserData } = newUser.toObject();
-    return res
-      .status(200)
-      .json(new ApiResponse(200, { user: safeUserData }, "User created successfully"));
+    // const referalCode = await genarateReferralCode();
+
+    // const newUser = new User({
+    //   name,
+    //   email: emailNormalized,
+    //   password,
+    //   referredBy: referrer?._id || null,
+    //   referalCode,
+    //   role: "user",
+    //   status: "Inactive",
+    //   photo: "",
+    //   downline: [],
+    // });
+
+    // if (referrer) {
+    //   // const sponser = await User.findById(referrer.referredBy);
+    //   // if (sponser) {
+    //   //   sponser.downline.push(newUser._id);
+    //   //   await sponser.save();
+    //   // }
+    //   referrer.downline.push(newUser?._id)
+    //   referrer.save()
+    // }
+
+    // await newUser.save();
+
+    // const { password: _, ...safeUserData } = newUser.toObject();
+    // return res
+    //   .status(200)
+    //   .json(new ApiResponse(200, { user: safeUserData }, "User created successfully"));
   } catch (error) {
     console.error("Error during user registration:", error);
     throw new ApiError(500, error?.message || "Error while creating user");
@@ -236,51 +290,37 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
 
 // update a user
 const updateUser = asyncHandler(async (req, res) => {
-  try {
-    const { name, invest } = req.body;
-    const userPhotoLocalPath = req.file
-    if (!userPhotoLocalPath) {
-      throw new ApiError(400, "coverImage file is missing")
+  const { name } = req.body;
+  const userPhotoLocalPath = req.file;
+
+  return withTransaction(async (session) => {
+    const user = await User.findById(req.user._id).session(session);
+    if (!user) throw new ApiError(404, 'User not found');
+
+    let photoUrl;
+    if (userPhotoLocalPath) {
+      if (user.photo) {
+        const publicId = user.photo.split('/').pop().split('.')[0];
+        await handleCloudinaryDelete(publicId);
+      }
+      photoUrl = await handleCloudinaryUpload(userPhotoLocalPath.path);
     }
 
-    const user = await User.findById(req.user?._id);
-    if (!user) {
-      throw new ApiError(400, "user not found")
-    }
-    if (user.photo) {
-      const publicId = user.photo.split("/").pop().split(".")[0];
-      await deleteMediaFromCloudinary(publicId)
-    }
-    const photoUrl = await uploadOnCloudinary(userPhotoLocalPath.path)
-    const photo = photoUrl?.secure_url;
-
-    const updateFeilds = {
-      ...(name && { name }), //update name if provided
-      ...(Number(invest) === 100 && { status: "Active" }),
-      ...(photo && { photo })
-    }
+    const updateData = {
+      ...(name && { name }),
+      ...(photoUrl?.secure_url && { photo: photoUrl.secure_url })
+    };
 
     const updatedUser = await User.findByIdAndUpdate(
       req.user._id,
-      {
-        $set: updateFeilds
-      },
-      {
-        new: true
-      }
-    ).select("-password -refreshToken")
+      { $set: updateData },
+      { new: true, session }
+    ).select('-password -refreshToken');
 
     return res
       .status(200)
-      .json(new ApiResponse(200, { updatedUser }, "user updated successfully"))
-  } catch (error) {
-    throw new ApiError(
-      500,
-      error?.message || "error while updating a user"
-    )
-  }
-
-})
+      .json(new ApiResponse(200, updatedUser, 'User updated successfully'));
+  });
 
 // distribute commission for every users
 const userCommission = asyncHandler(async (req, res) => {
@@ -500,26 +540,21 @@ const getAllPaymentRequeste = asyncHandler(async (req, res) => {
 
 // payment confirmation
 const paymentConfirmation = asyncHandler(async (req, res) => {
-  const session = await mongoose.startSession()
-  session.startTransaction()
+  const [paymentId, userId] = req.body;
   try {
-    const { paymentId, userId } = req.body;
-    if (!paymentId || !userId) {
-      throw new ApiError(400, "Both payment ID and user ID are required")
-    }
+    return withTransaction(async (session) => {
+      const [payment, user] = await Promise.all([
+        Payment.findById(paymentId).session(session),
+        User.findById(userId).session(session).select("-password -refreshToken")
+      ])
 
-    const [payment, user] = await Promise.all([
-      Payment.findById(paymentId).session(session),
-      User.findById(userId).session(session).select("-password -refreshToken")
-    ])
+      if (!payment) throw new ApiError(404, "payment not found")
+      if (!user) throw new ApiError(404, "user not found")
 
-    if (!payment) throw new ApiError(404, "payment not found")
-    if (!user) throw new ApiError(404, "user not found")
-
-      if(payment.status !== "pending"){
+      if (payment.status !== "pending") {
         throw new ApiError(400, "payment already confirmed")
       }
-      if(payment.Amount < 100){
+      if (payment.Amount < 100) {
         throw new ApiError(400, "payment must be 100")
       }
       payment.status = "completed"
@@ -530,22 +565,18 @@ const paymentConfirmation = asyncHandler(async (req, res) => {
         user.save({ session })
       ])
 
-      await session.commitTransaction()
-
-    return res
-      .status(200)
-      .json(
-        new ApiResponse(
-          200,
-          { user, payment },
-          "payment confirmation succesfully"
+      return res
+        .status(200)
+        .json(
+          new ApiResponse(
+            200,
+            { user, payment },
+            "payment confirmation succesfully"
+          )
         )
-      )
+    })
   } catch (error) {
-    await session.abortTransaction();
-    const statusCode = error.statusCode || 500;
-    const message = error.message || "Payment confirmation failed";
-    throw new ApiError(statusCode, message, error?.errors);
+    throw new ApiError(500, error?.message || "error while getting payment confirmation")
   }
   finally {
     session.endSession()
