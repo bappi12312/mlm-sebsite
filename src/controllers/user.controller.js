@@ -74,50 +74,6 @@ const userRegister = asyncHandler(async (req, res) => {
         .json(new ApiResponse(200, { user: safeUserData }, "User created successfully"));
 
     });
-    // const emailNormalized = email.toLowerCase().trim();
-    // let referrer = referredBy
-    //   ? await User.findOne({ referalCode: referredBy.trim() })
-    //   : null;
-
-    // if (referredBy && !referrer) {
-    //   return res.status(400).json({ message: "Invalid referral code." });
-    // }
-
-    // const existedUser = await User.findOne({ email: emailNormalized });
-    // if (existedUser) {
-    //   throw new ApiError(400, "User already exists");
-    // }
-
-    // const referalCode = await genarateReferralCode();
-
-    // const newUser = new User({
-    //   name,
-    //   email: emailNormalized,
-    //   password,
-    //   referredBy: referrer?._id || null,
-    //   referalCode,
-    //   role: "user",
-    //   status: "Inactive",
-    //   photo: "",
-    //   downline: [],
-    // });
-
-    // if (referrer) {
-    //   // const sponser = await User.findById(referrer.referredBy);
-    //   // if (sponser) {
-    //   //   sponser.downline.push(newUser._id);
-    //   //   await sponser.save();
-    //   // }
-    //   referrer.downline.push(newUser?._id)
-    //   referrer.save()
-    // }
-
-    // await newUser.save();
-
-    // const { password: _, ...safeUserData } = newUser.toObject();
-    // return res
-    //   .status(200)
-    //   .json(new ApiResponse(200, { user: safeUserData }, "User created successfully"));
   } catch (error) {
     console.error("Error during user registration:", error);
     throw new ApiError(500, error?.message || "Error while creating user");
@@ -301,9 +257,9 @@ const updateUser = asyncHandler(async (req, res) => {
     if (userPhotoLocalPath) {
       if (user.photo) {
         const publicId = user.photo.split('/').pop().split('.')[0];
-        await handleCloudinaryDelete(publicId);
+        await deleteMediaFromCloudinary(publicId);
       }
-      photoUrl = await handleCloudinaryUpload(userPhotoLocalPath.path);
+      photoUrl = await uploadOnCloudinary(userPhotoLocalPath.path);
     }
 
     const updateData = {
