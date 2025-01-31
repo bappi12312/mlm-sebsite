@@ -309,7 +309,7 @@ const userCommission = asyncHandler(async (req, res) => {
 
 const getSingleUser = asyncHandler(async (req, res) => {
   try {
-    const user = await User.findById(req.params.id || req.user?._id).select(" -refreshToken")
+    const user = await User.findById(req.user._id);
     return res
       .status(200)
       .json(new ApiResponse(200, { user }, "get a user"))

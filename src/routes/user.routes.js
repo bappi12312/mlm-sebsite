@@ -35,7 +35,7 @@ router.route("/paymentRequest").post(verifyJWT,paymentRequsted)
 router.route("/payment-confirmation").patch(verifyJWT,paymentConfirmation)
 router.route("/get-allPayment-request").get(verifyJWT,getAllPaymentRequeste)
 router.route("/get-all-users").get(verifyJWT,getAllUsers)
-router.route("/profile").get(getSingleUser)
+router.route("/profile").get(verifyJWT,getSingleUser)
 
 
 export default router
