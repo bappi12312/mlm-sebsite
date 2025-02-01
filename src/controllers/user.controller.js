@@ -76,7 +76,7 @@ const userRegister = asyncHandler(async (req, res) => {
     });
   } catch (error) {
     console.error("Error during user registration:", error);
-    throw new ApiError(500, error?.message || "Error while creating user");
+    throw new ApiError(500,"some problem" || error?.message || "Error while creating user");
   }
 });
 
