@@ -61,7 +61,7 @@ const userRegister = asyncHandler(async (req, res) => {
         photo: "",
         downline: [],
       }
-      , { session });
+        , { session });
 
       if (referrer) {
         referrer.downline.push(newUser._id);
@@ -104,7 +104,9 @@ const userLogin = asyncHandler(async (req, res) => {
     // cookies(cannot be modified in frontend only server can)
     const options = {
       httpOnly: true,
-      secure: true
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
     }
 
     return res
@@ -146,7 +148,9 @@ const logoutUser = asyncHandler(async (req, res) => {
     // Clear cookies
     const options = {
       httpOnly: true,
-      secure: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
     };
     res.clearCookie("accessToken", options)
       .clearCookie("refreshToken", options)
@@ -218,7 +222,9 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
     // Generate new tokens
     const options = {
       httpOnly: true,
-      secure: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
     };
     const { accessToken, refreshToken } = await generateAccessAndRefreshTokens(
       user._id
