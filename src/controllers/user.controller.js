@@ -99,7 +99,6 @@ const userLogin = asyncHandler(async (req, res) => {
       throw new ApiError(401, "password are incorrrect")
     }
     const { accessToken, refreshToken } = await generateAccessAndRefreshTokens(user?._id)
-    const loggedInUser = await User.findById(user._id).select("-password -refreshToken")
 
     // cookies(cannot be modified in frontend only server can)
     const options = {
@@ -117,7 +116,7 @@ const userLogin = asyncHandler(async (req, res) => {
         new ApiResponse(
           200,
           {
-            user: loggedInUser, accessToken, refreshToken
+            user: user, accessToken, refreshToken
           },
           "User logged In Successfully"
         )
