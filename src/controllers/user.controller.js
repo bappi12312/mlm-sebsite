@@ -34,23 +34,21 @@ const userRegister = asyncHandler(async (req, res) => {
     throw new ApiError(400, 'All fields are required');
   }
 
+  const session = await mongoose.startSession();
   try {
-    return withTransaction(async (session) => {
+    const safeUserData = await session.withTransaction(async () => {
       const emailNormalized = email.toLowerCase().trim();
-      const [existingUser, referrer] = await Promise.all([
-        User.findOne({ email: emailNormalized }).session(session),
-        referredBy ? User.findOne({ referalCode: referredBy.trim() }).session(session) : null,
-      ])
 
-      if (existingUser) {
-        throw new ApiError(400, "User already exists");
+      const existingUser = await User.findOne({ email: emailNormalized }).session(session);
+      if (existingUser) throw new ApiError(400, "User already exists");
+
+      let referrer = null;
+      if (referredBy) {
+        referrer = await User.findOne({ referalCode: referredBy.trim() }).session(session);
+        if (!referrer) throw new ApiError(400, "Invalid referral code");
       }
 
-      if (referredBy && !referrer) {
-        throw new ApiError(400, "Invalid referral code");
-      }
-
-      const newUser = await User.create({
+      const newUser = new User({
         name,
         email: emailNormalized,
         password,
@@ -58,27 +56,32 @@ const userRegister = asyncHandler(async (req, res) => {
         referalCode: await genarateReferralCode(),
         role: "user",
         status: "Inactive",
-        photo: "",
         downline: [],
-      }
-        , { session });
+      });
+
+      await newUser.save({ session });
 
       if (referrer) {
         referrer.downline.push(newUser._id);
         await referrer.save({ session });
       }
-      const { password: _, ...safeUserData } = newUser[0].toObject();
 
-      return res
-        .status(200)
-        .json(new ApiResponse(200, { user: safeUserData }, "User created successfully"));
-
+      const { password: _, ...userData } = newUser.toObject();
+      return userData;
     });
+
+    return res.status(200).json(
+      new ApiResponse(200, { user: safeUserData }, "User created successfully")
+    );
   } catch (error) {
     console.error("Error during user registration:", error);
-    throw new ApiError(500,"some problem" || error?.message || "Error while creating user");
+    throw new ApiError(500, error?.message || "Error while creating user");
+  } finally {
+    session.endSession();
   }
 });
+
+
 
 const userLogin = asyncHandler(async (req, res) => {
   const { email, password } = req.body;
