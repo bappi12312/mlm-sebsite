@@ -16,8 +16,10 @@ import {
   paymentConfirmation,
   getAllPaymentRequeste,
   getAllUsers,
-  getSingleUser
+  getSingleUser,
+  deleteAUser
 } from "../controllers/user.controller.js";
+import { validateIdParam } from "../middlewares/validate.middleware.js";
 
 const router = Router()
 
@@ -36,6 +38,7 @@ router.route("/payment-confirmation").patch(verifyJWT,paymentConfirmation)
 router.route("/get-allPayment-request").get(verifyJWT,getAllPaymentRequeste)
 router.route("/get-all-users").get(verifyJWT,getAllUsers)
 router.route("/profile").get(verifyJWT,getSingleUser)
+router.route("/delete-user/:id").delete(verifyJWT,validateIdParam,deleteAUser)
 
 
 export default router

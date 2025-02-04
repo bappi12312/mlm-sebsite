@@ -582,6 +582,47 @@ const getAllUsers = asyncHandler(async (req, res) => {
   }
 })
 
+const deleteAUser = asyncHandler(async (req, res) => {
+  try {
+    // 1. Use only URL parameter for ID (RESTful standards)
+    const userId = req.params.id || req.body.id;
+
+    // 2. Validate ID format before query
+    if (!mongoose.Types.ObjectId.isValid(userId)) {
+      throw new ApiError(400, "Invalid user ID format");
+    }
+
+    // 3. Use findByIdAndDelete for single operation
+    const deletedUser = await User.findByIdAndDelete(userId);
+
+    if (!deletedUser) {
+      throw new ApiError(404, "User not found");
+    }
+
+    // 4. Consider adding cleanup for user-related data here if needed
+    // Example: await Post.deleteMany({ author: userId });
+
+    return res
+      .status(200)
+      .json(
+        new ApiResponse(200, {}, "User deleted successfully")
+      );
+  } catch (error) {
+    // 5. Handle specific Mongoose errors
+    if (error instanceof mongoose.Error.CastError) {
+      throw new ApiError(400, "Invalid user ID format");
+    }
+
+    // 6. Preserve existing error handling for other cases
+    throw new ApiError(
+      error.statusCode || 500,
+      error.message || "Error while deleting user"
+    );
+  }
+});
+
+
+
 
 export {
   userRegister,
@@ -598,5 +639,6 @@ export {
   getAllUsers,
   getAllPayment,
   getAllPaymentRequeste,
-  getSingleUser
+  getSingleUser,
+  deleteAUser
 }
