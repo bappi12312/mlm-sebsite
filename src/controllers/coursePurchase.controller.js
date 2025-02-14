@@ -6,6 +6,7 @@ import mongoose from "mongoose";
 import { AffiliateSale } from "../models/affiliateSale.model.js";
 import { Course } from "../models/coursePakageSchema.model.js";
 import { uploadOnCloudinary } from '../utils/cloudinary.js'
+import fs from "fs"; 
 
 const coursePurchase = asyncHandler(async (req, res) => {
   const session = await mongoose.startSession();
@@ -283,47 +284,54 @@ const updateUserStatus = asyncHandler(async(req, res) => {
 const createCourse = asyncHandler(async (req, res) => {
   const { name, price, description } = req.body;
 
+  // Validate request before file handling
   if (!name || !price) {
     throw new ApiError(400, "Name and price are required fields");
   }
 
+  if (!req.file) {
+    throw new ApiError(400, "Course image is required");
+  }
+
   const session = await mongoose.startSession();
+  let imagePath = req.file.path;
+
   try {
     session.startTransaction();
-    
+
+    // Check for existing course
     const existingCourse = await Course.findOne({ name }).session(session);
     if (existingCourse) {
+      fs.unlinkSync(imagePath);
       throw new ApiError(409, "Course with this name already exists");
     }
 
-    const image = req.file;
-
-    if (!image) {
-      throw new ApiError(400, "Image is required");
+    // Upload to Cloudinary
+    const imageUpload = await uploadOnCloudinary(imagePath);
+    if (!imageUpload?.secure_url) {
+      throw new ApiError(400, "Image upload failed. Please try again.");
     }
 
-    const imageUpload = await uploadOnCloudinary(image);
-    if (!imageUpload) {
-      throw new ApiError(400, "Image upload failed");
-    }
-
-    const newCourse = new Course({
+    // Create course
+    const newCourse = await Course.create([{
       name,
       price,
       description: description || "",
-      // courseCode: generateCourseCode(),
       status: "active",
-      image: imageUpload?.secure_url
-    });
+      image: imageUpload.secure_url
+    }], { session });
 
-    await newCourse.save({ session });
-    
     await session.commitTransaction();
     
     return res.status(201).json(
-      new ApiResponse(201, newCourse, "Course created successfully")
+      new ApiResponse(201, newCourse[0], "Course created successfully")
     );
+    
   } catch (error) {
+    // Cleanup files on error
+    if (imagePath && fs.existsSync(imagePath)) {
+      fs.unlinkSync(imagePath);
+    }
     await session.abortTransaction();
     throw error;
   } finally {
