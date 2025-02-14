@@ -436,50 +436,43 @@ const deleteCourse = asyncHandler(async (req, res) => {
 // Get All Courses Controller
 const getAllCourses = asyncHandler(async (req, res) => {
   const { page = 1, limit = 10, status, sort = '-createdAt' } = req.query;
-  
-  // Validate numeric parameters
-  if (isNaN(page) || isNaN(limit)) {
-    throw new ApiError(400, "Invalid pagination parameters");
-  }
-
-  const filter = {};
-  if (status && ['active', 'inactive'].includes(status)) {
-    filter.status = status;
-  }
-
-  const options = {
-    page: parseInt(page),
-    limit: parseInt(limit),
-    sort,
-    lean: true,
-    select: 'name price description status courseCode createdAt',
-    collation: { locale: 'en' }
-  };
-
-  // Cache key for Redis (optional)
-  const cacheKey = `courses:${status}:${page}:${limit}:${sort}`;
 
   try {
-    // Check cache first (if using Redis)
-    // const cachedData = await redisClient.get(cacheKey);
-    // if (cachedData) return res.json(JSON.parse(cachedData));
+    // Validate and parse inputs
+    const parsedPage = Math.max(1, parseInt(page)) || 1;
+    const parsedLimit = Math.min(Math.max(1, parseInt(limit)), 100) || 10;
 
-    const courses = await Course.paginate(filter, options);
+    // Build query
+    const query = {};
+    if (status && ['active', 'inactive'].includes(status)) {
+      query.status = status;
+    }
 
-    // Set cache (optional - 1 hour expiration)
-    // await redisClient.setEx(cacheKey, 3600, JSON.stringify(courses));
+    // Build options
+    const options = {
+      page: parsedPage,
+      limit: parsedLimit,
+      sort,
+      select: 'name price description status courseCode createdAt',
+      lean: true
+    };
+
+    // Execute paginated query
+    const result = await Course.paginate(query, options);
 
     return res.status(200).json(
       new ApiResponse(200, {
-        totalItems: courses.totalDocs,
-        totalPages: courses.totalPages,
-        currentPage: courses.page,
-        itemsPerPage: courses.limit,
-        courses: courses.docs
+        totalItems: result.totalDocs,
+        totalPages: result.totalPages,
+        currentPage: result.page,
+        itemsPerPage: result.limit,
+        courses: result.docs
       }, "Courses retrieved successfully")
     );
+    
   } catch (error) {
-    throw new ApiError(500, "Error retrieving courses");
+    console.error('Course retrieval error:', error);
+    throw new ApiError(500, "Failed to retrieve courses. Please try again later.");
   }
 });
 

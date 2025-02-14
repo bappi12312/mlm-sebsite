@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import mongoosePaginate from "mongoose-paginate-v2";
 
 const coursePakageSchema = new mongoose.Schema({
   name: {
@@ -24,6 +25,8 @@ const coursePakageSchema = new mongoose.Schema({
   },
   createdAt: { type: Date, default: Date.now }
 })
+
+coursePakageSchema.plugin(mongoosePaginate)
 
 coursePakageSchema.index({ name: 1 }, { unique: true });
 coursePakageSchema.index({status: 1,createdAt: -1})

@@ -24,9 +24,13 @@ import { validateIdParam } from "../middlewares/validate.middleware.js";
 import { activateAffiliate,coursePurchase,getAffiliateStats, updateUserStatus, createCourse,deleteCourse, getCourseById,getAllCourses,updateCourse, getAffiliateSales } from "../controllers/coursePurchase.controller.js";
 
 // Protect purchase endpoint:
+// In your rate limiter config
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 5 // Limit each IP to 5 requests per windowMs
+  max: 100, // Limit each IP to 100 requests per window
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: "Too many requests, please try again later"
 });
 
 
