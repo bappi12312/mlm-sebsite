@@ -527,6 +527,117 @@ const getCourseById = asyncHandler(async (req, res) => {
 });
 
 
+const getAffiliateSales = asyncHandler(async (req, res) => {
+  const { userId } = req.params;
+  const { page = 1, limit = 10 } = req.query;
+
+  // Validate input parameters
+  if (!mongoose.Types.ObjectId.isValid(userId)) {
+    throw new ApiError(400, "Invalid user ID");
+  }
+
+  if (isNaN(page) || isNaN(limit)) {
+    throw new ApiError(400, "Invalid pagination parameters");
+  }
+
+  try {
+    // Check if user exists
+    const userExists = await User.exists({ _id: userId });
+    if (!userExists) {
+      throw new ApiError(404, "User not found");
+    }
+
+    // Aggregation pipeline for optimized query
+    const pipeline = [
+      {
+        $match: {
+          affiliate: new mongoose.Types.ObjectId(userId)
+        }
+      },
+      {
+        $lookup: {
+          from: "courses",
+          localField: "course",
+          foreignField: "_id",
+          as: "course"
+        }
+      },
+      {
+        $unwind: "$course"
+      },
+      {
+        $lookup: {
+          from: "users",
+          localField: "buyer",
+          foreignField: "_id",
+          as: "buyer"
+        }
+      },
+      {
+        $unwind: "$buyer"
+      },
+      {
+        $project: {
+          "buyer.password": 0,
+          "buyer.refreshToken": 0,
+          "buyer.__v": 0
+        }
+      },
+      {
+        $facet: {
+          metadata: [
+            { $count: "totalSales" },
+            {
+              $addFields: {
+                currentPage: parseInt(page),
+                limit: parseInt(limit)
+              }
+            }
+          ],
+          data: [
+            { $skip: (parseInt(page) - 1) * parseInt(limit) },
+            { $limit: parseInt(limit) }
+          ]
+        }
+      },
+      {
+        $unwind: "$metadata"
+      }
+    ];
+
+    const result = await AffiliateSale.aggregate(pipeline);
+
+    if (result.length === 0) {
+      return res.status(200).json(
+        new ApiResponse(200, {
+          totalSales: 0,
+          currentPage: 1,
+          totalPages: 0,
+          sales: []
+        }, "No sales found for this affiliate")
+      );
+    }
+
+    const responseData = {
+      totalSales: result[0].metadata.totalSales,
+      currentPage: result[0].metadata.currentPage,
+      totalPages: Math.ceil(result[0].metadata.totalSales / parseInt(limit)),
+      sales: result[0].data
+    };
+
+    // Optional: Cache the result in Redis
+    // await redisClient.setEx(`affiliateSales:${userId}:${page}:${limit}`, 3600, JSON.stringify(responseData));
+
+    return res.status(200).json(
+      new ApiResponse(200, responseData, "Affiliate sales retrieved successfully")
+    );
+
+  } catch (error) {
+    throw new ApiError(500, error.message || "Failed to retrieve affiliate sales");
+  }
+});
+
+
 export {
   activateAffiliate,
   coursePurchase,
@@ -536,5 +647,6 @@ export {
   getCourseById,
   createCourse,
   updateCourse,
-  deleteCourse
+  deleteCourse,
+  getAffiliateSales
 }

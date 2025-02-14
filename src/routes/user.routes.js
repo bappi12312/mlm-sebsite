@@ -21,7 +21,7 @@ import {
   deleteAUser
 } from "../controllers/user.controller.js";
 import { validateIdParam } from "../middlewares/validate.middleware.js";
-import { activateAffiliate,coursePurchase,getAffiliateStats, updateUserStatus, createCourse,deleteCourse, getCourseById,getAllCourses,updateCourse } from "../controllers/coursePurchase.controller.js";
+import { activateAffiliate,coursePurchase,getAffiliateStats, updateUserStatus, createCourse,deleteCourse, getCourseById,getAllCourses,updateCourse, getAffiliateSales } from "../controllers/coursePurchase.controller.js";
 
 // Protect purchase endpoint:
 const limiter = rateLimit({
@@ -57,6 +57,8 @@ router.route("/delete-course/:courseId").delete(verifyJWT,limiter,deleteCourse)
 router.route("/get-course-by-id/:courseId").get(verifyJWT,limiter,getCourseById)
 router.route("/get-all-courses").get(verifyJWT,limiter,getAllCourses)
 router.route("/update-course/:courseId").patch(verifyJWT,upload.single("image"),limiter,updateCourse)
+router.get("/affiliate-sales/:userId", verifyJWT, getAffiliateSales);
+
 
 
 export default router

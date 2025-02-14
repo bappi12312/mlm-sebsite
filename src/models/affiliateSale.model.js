@@ -23,6 +23,7 @@ const affiliateSaleSchema = new mongoose.Schema({
 
 affiliateSaleSchema.index({affiliate: 1})
 affiliateSaleSchema.index({buyer: 1})
+affiliateSaleSchema.index({ createdAt: -1 });
 
 
 export const AffiliateSale = mongoose.model("AffiliateSale", affiliateSaleSchema)
