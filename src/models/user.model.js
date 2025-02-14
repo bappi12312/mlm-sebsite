@@ -36,10 +36,6 @@ const userSchema = new mongoose.Schema({
     type: Number,
     default: 0,
   },
-  // teamEarnings: {
-  //   type: Number,
-  //   default: 0,
-  // },
   directRecruit: {
     type: Number,
     default: 0,
@@ -69,8 +65,24 @@ const userSchema = new mongoose.Schema({
       level: Number,
       date: { type: Date, default: Date.now },
     }
-  ]
+  ],
+  isPayForCourse: {
+    type: Boolean,
+    default: false
+  },
+  isPay: {
+    type: Boolean,
+    default: false
+  },
+  isAffiliate: { type: Boolean, default: false },
+  affiliateBalance: { type: Number, default: 0 },
+  affiliateSales: [{ type: mongoose.Schema.Types.ObjectId, ref: 'AffiliateSale' }],
+  uplines: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  }]
 }, { timestamps: true })
+// eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJfaWQiOiI2N2FlMmRiZTY1Mjg4MmZiMGE0YzUzYTYiLCJlbWFpbCI6ImVAZ21haWwuY29tIiwiaWF0IjoxNzM5NDY4NTQ4LCJleHAiOjE3Mzk5MDA1NDh9.1bLoUsqT7WQTqE1-y0aCjsfHw1shchaubIP_3tkQBNg
 
 userSchema.pre('save', async function (next) {
   if (!this.isModified('password')) {
@@ -80,8 +92,8 @@ userSchema.pre('save', async function (next) {
   next()
 })
 
-userSchema.methods.isPasswordCorrect = async function(password) {
-  return await bcrypt.compare(password,this.password)
+userSchema.methods.isPasswordCorrect = async function (password) {
+  return await bcrypt.compare(password, this.password)
 }
 
 userSchema.methods.generateAccessToken = function () {
@@ -115,5 +127,10 @@ userSchema.index({ email: 1 }, { unique: true });
 userSchema.index({ referalCode: 1 }, { unique: true });
 userSchema.index({ referredBy: 1 });
 userSchema.index({ status: 1 });
+userSchema.index({ isAffiliate: 1 });
+userSchema.index({affiliateCode: 1})
+userSchema.index({ uplines: 1 });
+userSchema.index({ isPay: 1 });
+userSchema.index({ isPayForCourse: 1 });
 
 export const User = mongoose.model("User", userSchema)

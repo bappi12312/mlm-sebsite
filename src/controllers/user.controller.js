@@ -9,7 +9,7 @@ import { Payment } from '../models/payment.model.js'
 import { PaymentRequeste } from '../models/paymentRequeste.model.js'
 import jwt from 'jsonwebtoken'
 import { distributeUplineCommissions } from './commission.controller.js'
-import mongoose, { mongo } from 'mongoose'
+import mongoose from 'mongoose'
 
 const withTransaction = async (operations) => {
   const session = await mongoose.startSession();
@@ -43,9 +43,12 @@ const userRegister = asyncHandler(async (req, res) => {
       if (existingUser) throw new ApiError(400, "User already exists");
 
       let referrer = null;
+      let uplines = [];
       if (referredBy) {
-        referrer = await User.findOne({ referalCode: referredBy.trim() }).session(session);
+        referrer = await User.findOne({ referalCode: referredBy.trim() }).session(session).select("_id uplines");
         if (!referrer) throw new ApiError(400, "Invalid referral code");
+
+        uplines = [referrer._id,...(referrer?.uplines?.slice(0, 3) || [])]
       }
 
       const newUser = new User({
@@ -57,12 +60,13 @@ const userRegister = asyncHandler(async (req, res) => {
         role: "user",
         status: "Inactive",
         downline: [],
+        uplines: uplines
       });
 
       await newUser.save({ session });
 
       if (referrer) {
-        referrer.downline.push(newUser._id);
+        referrer.downline?.push(newUser._id);
         await referrer.save({ session });
       }
 

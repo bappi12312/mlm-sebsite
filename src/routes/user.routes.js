@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { upload } from "../middlewares/multer.middleware.js"
 import { verifyJWT } from "../middlewares/auth.middleware.js"
+import rateLimit from "express-rate-limit"
 import {
   userRegister,
   userLogin,
@@ -20,12 +21,20 @@ import {
   deleteAUser
 } from "../controllers/user.controller.js";
 import { validateIdParam } from "../middlewares/validate.middleware.js";
+import { activateAffiliate,coursePurchase,getAffiliateStats, updateUserStatus, } from "../controllers/coursePurchase.controller.js";
+
+// Protect purchase endpoint:
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 5 // Limit each IP to 5 requests per windowMs
+});
+
 
 const router = Router()
 
-router.route("/register").post(userRegister)
-router.route("/login").post(userLogin)
-router.route("/logout").post(verifyJWT,logoutUser)
+router.route("/register").post(limiter,userRegister)
+router.route("/login").post(limiter,userLogin)
+router.route("/logout").post(limiter,verifyJWT,logoutUser)
 router.route("/refresh-token").post(refreshAccessToken)
 router.route("/change-password").post(verifyJWT,updatePassword)
 router.route("/update-user").patch(verifyJWT,upload.single("photo"),updateUser)
@@ -39,6 +48,10 @@ router.route("/get-allPayment-request").get(verifyJWT,getAllPaymentRequeste)
 router.route("/get-all-users").get(verifyJWT,getAllUsers)
 router.route("/profile").get(verifyJWT,getSingleUser)
 router.route("/delete-user/:id").delete(verifyJWT,validateIdParam,deleteAUser)
+router.route("/activate-affiliate").post(verifyJWT,activateAffiliate)
+router.route("/course-purchase").post(verifyJWT,limiter,coursePurchase)
+router.route("/get-affiliate-stats").get(verifyJWT,getAffiliateStats)
+router.route("/update-user-status/:userId").patch(verifyJWT,limiter,updateUserStatus)
 
 
 export default router
