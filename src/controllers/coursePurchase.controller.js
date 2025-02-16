@@ -479,28 +479,33 @@ const getAllCourses = asyncHandler(async (req, res) => {
 // Get Single Course Controller
 const getCourseById = asyncHandler(async (req, res) => {
   const { courseId } = req.params;
-  const { includeSales } = req.query;
-
-  if (!mongoose.Types.ObjectId.isValid(courseId)) {
-    throw new ApiError(400, "Invalid course ID format");
-  }
-
-  const cacheKey = `course:${courseId}`;
+  // const { includeSales } = req.query;
 
   try {
-    // Check cache first
-    // const cachedData = await redisClient.get(cacheKey);
-    // if (cachedData) return res.json(JSON.parse(cachedData));
+    // Validate course ID format
+    if (!mongoose.Types.ObjectId.isValid(courseId)) {
+      throw new ApiError(400, "Invalid course ID format");
+    }
 
+    // Build base query
     const query = Course.findById(courseId).lean();
 
-    if (includeSales === 'true') {
-      query.populate({
-        path: 'affiliateSales',
-        select: 'amount commission createdAt',
-        options: { limit: 10 }
-      });
-    }
+    // //  Conditionally populate sales
+    // if (includeSales === 'true') {
+    //   query.populate({
+    //     path: 'affiliateSales',
+    //     select: 'amount commission createdAt buyer',
+    //     options: { 
+    //       limit: 10,
+    //       sort: { createdAt: -1 } 
+    //     },
+    //     populate: {
+    //       path: 'buyer',
+    //       select: 'name email'
+    //     },
+    //     strictPopulate: false, // Optional: Bypass strict population checks
+    //   });
+    // }
 
     const course = await query.exec();
 
@@ -508,14 +513,29 @@ const getCourseById = asyncHandler(async (req, res) => {
       throw new ApiError(404, "Course not found");
     }
 
-    // Set cache (optional - 30 minutes expiration)
-    // await redisClient.setEx(cacheKey, 1800, JSON.stringify(course));
-
     return res.status(200).json(
       new ApiResponse(200, course, "Course retrieved successfully")
     );
+
   } catch (error) {
-    throw new ApiError(500, "Error retrieving course");
+    console.error("Course retrieval error details:", error);
+    
+    // Handle specific mongoose errors
+    if (error.name === 'CastError') {
+      throw new ApiError(400, "Invalid course ID format");
+    }
+    
+    // Handle population errors
+    if (error.message.includes('MissingSchemaError')) {
+      throw new ApiError(500, "Data relationship configuration error");
+    }
+
+    // Pass through existing ApiErrors
+    if (error instanceof ApiError) {
+      throw error;
+    }
+
+    throw new ApiError(500, error.message || "Failed to retrieve course details");
   }
 });
 
