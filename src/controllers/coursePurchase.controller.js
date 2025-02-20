@@ -458,7 +458,7 @@ const getAllCourses = asyncHandler(async (req, res) => {
       page: parsedPage,
       limit: parsedLimit,
       sort,
-      select: 'name price description status courseCode createdAt',
+      select: 'name price description status courseCode image createdAt',
       lean: true
     };
 
