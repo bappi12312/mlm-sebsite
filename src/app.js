@@ -29,9 +29,20 @@ app.use((err, req, res, next) => {
   });
 });
 
+app.use((err, req, res, next) => {
+  if (err instanceof multer.MulterError) {
+    return res.status(400).json({
+      success: false,
+      message: err.message
+    });
+  }
+  // Handle other errors
+});
+
 
 // router import
 import userRouter from "./routes/user.routes.js"
+import multer from 'multer'
 
 app.use("/api/v1/users", userRouter)
 

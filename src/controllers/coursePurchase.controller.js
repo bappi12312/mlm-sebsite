@@ -299,20 +299,27 @@ const createCourse = asyncHandler(async (req, res) => {
   }
 
   const session = await mongoose.startSession();
-  let imagePath = req.file.path;
+  // let imagePath = req.file.path;
+  let imageUpload;
 
   try {
     session.startTransaction();
 
     // Check for existing course
     const existingCourse = await Course.findOne({ name }).session(session);
+    // if (existingCourse) {
+    //   fs.unlinkSync(imagePath);
+    //   throw new ApiError(409, "Course with this name already exists");
+    // }
     if (existingCourse) {
-      fs.unlinkSync(imagePath);
       throw new ApiError(409, "Course with this name already exists");
     }
 
     // Upload to Cloudinary
-    const imageUpload = await uploadOnCloudinary(imagePath);
+     imageUpload = await uploadOnCloudinary(
+      req.file.buffer,
+      req.file.originalname
+    );
     if (!imageUpload?.secure_url) {
       throw new ApiError(400, "Image upload failed. Please try again.");
     }
@@ -323,7 +330,8 @@ const createCourse = asyncHandler(async (req, res) => {
       price,
       description: description || "",
       status: "active",
-      image: imageUpload.secure_url
+      image: imageUpload.secure_url,
+      category: category || "General"
     }], { session });
 
     await session.commitTransaction();
@@ -334,8 +342,12 @@ const createCourse = asyncHandler(async (req, res) => {
     
   } catch (error) {
     // Cleanup files on error
-    if (imagePath && fs.existsSync(imagePath)) {
-      fs.unlinkSync(imagePath);
+    // if (imagePath && fs.existsSync(imagePath)) {
+    //   fs.unlinkSync(imagePath);
+    // }
+    if (imageUpload?.public_id) {
+      await cloudinary.uploader.destroy(imageUpload.public_id)
+        .catch(cleanupError => console.error("Cleanup failed:", cleanupError));
     }
     await session.abortTransaction();
     throw error;

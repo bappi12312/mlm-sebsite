@@ -1,5 +1,6 @@
+import stream from 'stream';
+import path from 'path';
 import { v2 as cloudinary } from 'cloudinary';
-import fs from 'fs';
 import dotenv from 'dotenv';
 
 dotenv.config();
@@ -16,32 +17,25 @@ console.log("Cloudinary Config:", {
   api_secret: process.env.CLOUDINARY_API_SECRET ? "✅ Loaded" : "❌ Missing",
 });
 
-const uploadOnCloudinary = async (localFilePath) => {
-  try {
-    // Validate file path
-    if (!localFilePath || !fs.existsSync(localFilePath)) {
-      throw new Error("Invalid file path or file doesn't exist");
-    }
+const uploadOnCloudinary = async (buffer, originalname) => {
+  return new Promise((resolve, reject) => {
+    const uploadStream = cloudinary.uploader.upload_stream(
+      {
+        folder: "course_images",
+        public_id: `course-${Date.now()}-${path.parse(originalname).name}`
+      },
+      (error, result) => {
+        if (error) reject(error);
+        else resolve(result);
+      }
+    );
 
-    // Upload to Cloudinary
-    const response = await cloudinary.uploader.upload(localFilePath, {
-      resource_type: "auto",
-      folder: "course_images"
-    });
-
-    // Remove local file after upload
-    fs.unlinkSync(localFilePath);
-    
-    return response;
-  } catch (error) {
-    // Cleanup local file if exists
-    if (localFilePath && fs.existsSync(localFilePath)) {
-      fs.unlinkSync(localFilePath);
-    }
-    console.error("Cloudinary upload error:", error);
-    return null;
-  }
+    const bufferStream = new stream.PassThrough();
+    bufferStream.end(buffer);
+    bufferStream.pipe(uploadStream);
+  });
 };
+
 const deleteMediaFromCloudinary = async (publicId) => {
   try {
     await cloudinary.uploader.destroy(publicId);
