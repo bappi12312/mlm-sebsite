@@ -82,7 +82,6 @@ const userSchema = new mongoose.Schema({
     ref: 'User'
   }]
 }, { timestamps: true })
-// eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJfaWQiOiI2N2FlMmRiZTY1Mjg4MmZiMGE0YzUzYTYiLCJlbWFpbCI6ImVAZ21haWwuY29tIiwiaWF0IjoxNzM5NDY4NTQ4LCJleHAiOjE3Mzk5MDA1NDh9.1bLoUsqT7WQTqE1-y0aCjsfHw1shchaubIP_3tkQBNg
 
 userSchema.pre('save', async function (next) {
   if (!this.isModified('password')) {

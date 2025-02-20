@@ -282,11 +282,16 @@ const updateUserStatus = asyncHandler(async(req, res) => {
 
 // Create Course Controller
 const createCourse = asyncHandler(async (req, res) => {
-  const { name, price, description } = req.body;
+  const { name, price, description,category } = req.body;
 
   // Validate request before file handling
-  if (!name || !price) {
+   // Enhanced validation
+   if (!name?.trim() || !price) {
     throw new ApiError(400, "Name and price are required fields");
+  }
+
+  if (isNaN(price) || Number(price) <= 0) {
+    throw new ApiError(400, "Price must be a valid positive number");
   }
 
   if (!req.file) {
