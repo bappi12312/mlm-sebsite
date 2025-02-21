@@ -555,20 +555,7 @@ const paymentConfirmation = asyncHandler(async (req, res) => {
 // get all users by admin
 const getAllUsers = asyncHandler(async (req, res) => {
   try {
-    const users = await User.aggregate([
-      {
-        $match: { status: "Inactive" }
-      },
-      {
-        $project: {
-          _id: 1,
-          name: 1,
-          email: 1,
-          status: 1,
-          referalCode: 1
-        }
-      }
-    ])
+    const users = await User.find().select("-password -refreshToken")
     if (!(users.length > 0)) {
       throw new ApiError(401, "users not found")
     }
