@@ -11,7 +11,7 @@ app.get('/', (req, res) => {
 app.use(
   cors({
     origin: ['http://localhost:3000', "https://tto-platform-blush.vercel.app"], // Allow specific frontend origin
-    methods: ['POST', 'PUT', 'GET', 'OPTIONS', 'HEAD'],
+    methods: ['POST', 'PUT', 'GET', 'OPTIONS', 'HEAD', 'PATCH', 'DELETE'],
     allowedHeaders: ['Content-Type', 'Authorization'],
     credentials: true, // Allow credentials
   })
