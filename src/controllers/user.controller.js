@@ -422,7 +422,26 @@ const paymentCreation = asyncHandler(async (req, res) => {
 
 const getAllPayment = asyncHandler(async (req, res) => {
   try {
-    const payments = await Payment.find()
+    const payments = await Payment.aggregate(
+      [
+        {
+          $match: { status: "pending" }
+        },
+        {
+          $project: {
+            FromNumber: 1,
+            ToNumber: 1,
+            Amount: 1,
+            PaymentDate: 1,
+            user: 1,
+          }
+        },
+        {
+          $sort: { PaymentDate: -1 }
+        }
+
+      ]
+    )
     if (!payments) {
       throw new ApiError(404, "payments not found")
     }
@@ -489,7 +508,24 @@ const paymentRequsted = asyncHandler(async (req, res) => {
 
 const getAllPaymentRequeste = asyncHandler(async (req, res) => {
   try {
-    const paymentRequestes = await PaymentRequeste.find()
+    const paymentRequestes = await PaymentRequeste.aggregate([
+      {
+        $match: { status: "pending" }
+      },
+      {
+        $project: {
+          type: 1,
+          number: 1,
+          confirmNumber: 1,
+          user: 1,
+          status: 1,
+          date: 1
+        }
+      },
+      {
+        $sort: { createdAt: -1 }
+      }
+    ])
     if (!paymentRequestes) {
       throw new ApiError(404, "payment requestes not found")
     }
@@ -499,11 +535,11 @@ const getAllPaymentRequeste = asyncHandler(async (req, res) => {
         new ApiResponse(
           200,
           { paymentRequestes },
-          "all payment requestes sent successfully"
+          "all new payment requestes sent successfully"
         )
       )
   } catch (error) {
-    throw new ApiError(500, error?.message || "error while getting all payment requestes")
+    throw new ApiError(500, error?.message || "error while getting all new payment requestes")
   }
 })
 
