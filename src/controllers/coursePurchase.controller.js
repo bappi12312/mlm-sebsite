@@ -6,7 +6,6 @@ import mongoose from "mongoose";
 import { AffiliateSale } from "../models/affiliateSale.model.js";
 import { Course } from "../models/coursePakageSchema.model.js";
 import { uploadOnCloudinary } from '../utils/cloudinary.js'
-import fs from "fs"; 
 
 const coursePurchase = asyncHandler(async (req, res) => {
   const session = await mongoose.startSession();
@@ -369,7 +368,8 @@ const updateCourse = asyncHandler(async (req, res) => {
     name: (val) => typeof val === 'string' && val.length > 0,
     price: (val) => typeof val === 'number' && val > 0,
     description: (val) => typeof val === 'string',
-    status: (val) => ['active', 'inactive'].includes(val)
+    status: (val) => ['active', 'inactive'].includes(val),
+    category: (val) => typeof val === 'string' && val.length > 0
   };
 
   const validUpdates = {};
