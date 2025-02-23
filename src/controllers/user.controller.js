@@ -60,7 +60,8 @@ const userRegister = asyncHandler(async (req, res) => {
         role: "user",
         status: "Inactive",
         downline: [],
-        uplines: uplines
+        uplines: uplines,
+        packageLink: [],
       });
 
       await newUser.save({ session });
@@ -166,6 +167,45 @@ const logoutUser = asyncHandler(async (req, res) => {
     throw new ApiError(500, error.message || "Error while logging out");
   }
 });
+
+const updateUserPakagelink = asyncHandler(async (req, res) => {
+  const { packageLink,userId } = req.body;
+  try {
+    if (!packageLink?.trim()) {
+      throw new ApiError(400, "Package link is required and cannot be empty");
+    }
+    if (!userId?.trim()) {
+      throw new ApiError(400, "User ID is required");
+    }
+  
+    // Validate MongoDB ID format
+    if (!mongoose.Types.ObjectId.isValid(userId)) {
+      throw new ApiError(400, "Invalid user ID format");
+    }
+  
+    // Update user document
+    const user = await User.findByIdAndUpdate(
+      userId,
+      
+        { $addToSet: 
+          { packageLink: { link: packageLink.trim(), status: "Active" } } 
+        },
+      { new: true, runValidators: true }
+    );
+  
+    if (!user) {
+      throw new ApiError(404, "User not found");
+    }
+  
+    return res
+      .status(200)
+      .json(
+        new ApiResponse(200, user, "User package link updated successfully")
+      )
+  } catch (error) {
+    throw new ApiError(500, error?.message, "error while getting update user package link")
+  }
+})
 
 
 // update a user password
@@ -591,7 +631,7 @@ const paymentConfirmation = asyncHandler(async (req, res) => {
 // get all users by admin
 const getAllUsers = asyncHandler(async (req, res) => {
   try {
-    const users = await User.find().select("-password -refreshToken")
+    const users = await User.find().sort({ createdAt: -1 }).select("-password -refreshToken")
     if (!(users.length > 0)) {
       throw new ApiError(401, "users not found")
     }
@@ -667,5 +707,6 @@ export {
   getAllPayment,
   getAllPaymentRequeste,
   getSingleUser,
-  deleteAUser
+  deleteAUser,
+  updateUserPakagelink
 }

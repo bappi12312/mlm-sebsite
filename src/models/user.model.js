@@ -80,6 +80,17 @@ const userSchema = new mongoose.Schema({
   uplines: [{
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User'
+  }],
+  pakageLink: [{
+    link: {
+      type: String,
+      default: null
+    },
+    status: {
+      type: String,
+      enum: ["Active", "Inactive"],
+      default: "Inactive"
+    },
   }]
 }, { timestamps: true })
 
@@ -131,5 +142,7 @@ userSchema.index({affiliateCode: 1})
 userSchema.index({ uplines: 1 });
 userSchema.index({ isPay: 1 });
 userSchema.index({ isPayForCourse: 1 });
+userSchema.index({ createdAt: -1 });
+userSchema.index({ "pakageLink.link": 1 });
 
 export const User = mongoose.model("User", userSchema)

@@ -61,7 +61,8 @@ router.route("/delete-course/:courseId").delete(verifyJWT,limiter,deleteCourse)
 router.route("/get-course-by-id/:courseId").get(verifyJWT,limiter,getCourseById)
 router.route("/get-all-courses").get(verifyJWT,limiter,getAllCourses)
 router.route("/update-course/:courseId").patch(verifyJWT,upload.single("image"),limiter,updateCourse)
-router.get("/affiliate-sales/:userId", verifyJWT, getAffiliateSales);
+router.route("/affiliate-sales/:userId").get(verifyJWT,limiter,getAffiliateSales);
+router.route("/update-pakage-link").patch(verifyJWT,limiter,updateUser)
 
 
 
