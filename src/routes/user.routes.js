@@ -18,7 +18,8 @@ import {
   getAllPaymentRequeste,
   getAllUsers,
   getSingleUser,
-  deleteAUser
+  deleteAUser,
+  updateUserPakagelink
 } from "../controllers/user.controller.js";
 import { validateIdParam } from "../middlewares/validate.middleware.js";
 import { activateAffiliate,coursePurchase,getAffiliateStats, updateUserStatus, createCourse,deleteCourse, getCourseById,getAllCourses,updateCourse, getAffiliateSales } from "../controllers/coursePurchase.controller.js";
@@ -62,7 +63,7 @@ router.route("/get-course-by-id/:courseId").get(verifyJWT,limiter,getCourseById)
 router.route("/get-all-courses").get(verifyJWT,limiter,getAllCourses)
 router.route("/update-course/:courseId").patch(verifyJWT,upload.single("image"),limiter,updateCourse)
 router.route("/affiliate-sales/:userId").get(verifyJWT,limiter,getAffiliateSales);
-router.route("/update-pakage-link").patch(verifyJWT,limiter,updateUser)
+router.route("/update-pakage-link").patch(verifyJWT,limiter,updateUserPakagelink);
 
 
 

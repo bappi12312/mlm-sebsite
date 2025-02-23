@@ -61,7 +61,7 @@ const userRegister = asyncHandler(async (req, res) => {
         status: "Inactive",
         downline: [],
         uplines: uplines,
-        packageLink: [],
+        pakageLink: [],
       });
 
       await newUser.save({ session });
@@ -187,8 +187,8 @@ const updateUserPakagelink = asyncHandler(async (req, res) => {
     const user = await User.findByIdAndUpdate(
       userId,
       
-        { $addToSet: 
-          { packageLink: { link: packageLink.trim(), status: "Active" } } 
+        { $push: 
+          { pakageLink: { link: packageLink.trim(), status: "Active" } } 
         },
       { new: true, runValidators: true }
     );
