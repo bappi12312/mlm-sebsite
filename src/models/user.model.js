@@ -91,7 +91,11 @@ const userSchema = new mongoose.Schema({
       enum: ["Active", "Inactive"],
       default: "Inactive"
     },
-  }]
+  }],
+  affiliateBalance: {
+    type: Number,
+    default: 0
+  },
 }, { timestamps: true })
 
 userSchema.pre('save', async function (next) {
@@ -138,11 +142,11 @@ userSchema.index({ referalCode: 1 }, { unique: true });
 userSchema.index({ referredBy: 1 });
 userSchema.index({ status: 1 });
 userSchema.index({ isAffiliate: 1 });
-userSchema.index({affiliateCode: 1})
 userSchema.index({ uplines: 1 });
 userSchema.index({ isPay: 1 });
 userSchema.index({ isPayForCourse: 1 });
 userSchema.index({ createdAt: -1 });
 userSchema.index({ "pakageLink.link": 1 });
+userSchema.index({ _id: 1 });
 
 export const User = mongoose.model("User", userSchema)

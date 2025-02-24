@@ -125,7 +125,7 @@ const activateAffiliate = asyncHandler(async (req, res) => {
   session.startTransaction();
 
   try {
-    const user = await User.findById(req.user._id).session(session);
+    const user = await User.findById(req.params.userId).session(session);
     if (!user) {
       throw new ApiError(404, "User not found");
     }

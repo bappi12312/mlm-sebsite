@@ -9,7 +9,7 @@ import { Payment } from '../models/payment.model.js'
 import { PaymentRequeste } from '../models/paymentRequeste.model.js'
 import jwt from 'jsonwebtoken'
 import { distributeUplineCommissions } from './commission.controller.js'
-import mongoose from 'mongoose'
+import mongoose, { isValidObjectId } from 'mongoose'
 
 const withTransaction = async (operations) => {
   const session = await mongoose.startSession();
@@ -337,7 +337,7 @@ const userCommission = asyncHandler(async (req, res) => {
 
   try {
     // Distribute commissions to the upline
-    await distributeUplineCommissions(req.user?._id, Number(amount));
+    await distributeUplineCommissions(req.params.userId, Number(amount));
 
     // Send success response
     return res
@@ -355,6 +355,93 @@ const userCommission = asyncHandler(async (req, res) => {
           error.message || "Error while distributing commission"
         )
       );
+  }
+});
+
+const giveEarningsEachUser = asyncHandler(async (req, res) => {
+  const { amount, affiliateAmount } = req.body;
+  const { userId } = req.params;
+
+  // Validation
+  if (!isValidObjectId(userId)) {
+    throw new ApiError(400, "Invalid user ID format");
+  }
+  if (affiliateAmount && amount) {
+    throw new ApiError(400, "Cannot process both affiliate and earnings in the same request");
+  }
+  if (affiliateAmount && affiliateAmount <= 0) {
+    throw new ApiError(400, "Affiliate amount must be a positive number");
+  }
+  if (amount && amount <= 0) {
+    throw new ApiError(400, "Earnings amount must be a positive number");
+  }
+
+  try {
+    // Atomic updates with conditions
+    let updateResult;
+    if (affiliateAmount) {
+      updateResult = await User.findByIdAndUpdate(
+        userId,
+        {
+          $inc: { affiliateBalance: -affiliateAmount },
+          $set: { updatedAt: new Date() }
+        },
+        {
+          new: true,
+          runValidators: true,
+          fields: 'isAffiliate affiliateBalance',
+          collation: { locale: 'en', strength: 2 }
+        }
+      ).where('isAffiliate').equals(true);
+    } else if (amount) {
+      updateResult = await User.findByIdAndUpdate(
+        userId,
+        {
+          $inc: { earnings: -amount },
+          $set: { updatedAt: new Date() }
+        },
+        {
+          new: true,
+          runValidators: true,
+          fields: 'isPay status earnings',
+          collation: { locale: 'en', strength: 2 }
+        }
+      ).where('status').equals('Active').where('isPay').equals(true);
+    } else {
+      throw new ApiError(400, "No valid amount provided");
+    }
+
+    if (!updateResult) {
+      const errorMessage = affiliateAmount 
+        ? "User is not an affiliate or not found" 
+        : "User not eligible for earnings or not found";
+      throw new ApiError(404, errorMessage);
+    }
+
+    const successMessage = affiliateAmount
+      ? "Affiliate balance updated successfully"
+      : "Earnings updated successfully";
+
+    return res
+      .status(200)
+      .json(new ApiResponse(200, {}, successMessage));
+
+  } catch (error) {
+    const statusCode = error.statusCode || 500;
+    const message = error.message || "Error processing user transaction";
+
+    // Log only server errors (5xx)
+    if (statusCode >= 500) {
+      console.error("Error processing transaction:", error.message, {
+        userId,
+        amount,
+        affiliateAmount
+      });
+    }
+
+    return res
+      .status(statusCode)
+      .json(new ApiError(statusCode, message));
   }
 });
 
@@ -708,5 +795,6 @@ export {
   getAllPaymentRequeste,
   getSingleUser,
   deleteAUser,
-  updateUserPakagelink
+  updateUserPakagelink,
+  giveEarningsEachUser
 }
