@@ -68,7 +68,7 @@ router.route("/update-course/:courseId").patch(verifyJWT,upload.single("image"),
 router.route("/affiliate-sales/:userId").get(verifyJWT,limiter,getAffiliateSales);
 router.route("/update-pakage-link").patch(verifyJWT,limiter,updateUserPakagelink);
 router.route("/give-earnings-each-user").patch(verifyJWT,limiter,giveEarningsEachUser);
-router.route("delete-a-payment/:id").delete(verifyJWT,limiter,deleteAPayment);
+router.route("/delete-a-payment/:id").delete(verifyJWT,limiter,deleteAPayment);
 router.route("/delete-payment-request/:id").delete(verifyJWT,limiter,deletePaymentRequest);
 
 
