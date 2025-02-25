@@ -672,7 +672,7 @@ const getAllPaymentRequeste = asyncHandler(async (req, res) => {
 
 // payment confirmation
 const paymentConfirmation = asyncHandler(async (req, res) => {
-  const [paymentId, userId] = req.body;
+  const { paymentId, userId } = req.body;
   try {
     return withTransaction(async (session) => {
       const [payment, user] = await Promise.all([
@@ -689,9 +689,15 @@ const paymentConfirmation = asyncHandler(async (req, res) => {
       if (payment.Amount < 100) {
         throw new ApiError(400, "payment must be 100")
       }
-      payment.status = "completed"
+      if(payment.Amount === 100){
       user.status = "Active"
 
+      }
+      if(payment.Amount === 250) {
+        user.isAffiliate = true
+      }
+        payment.status = "completed"
+        
       await Promise.all([
         payment.save({ session }),
         user.save({ session })
