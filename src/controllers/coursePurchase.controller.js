@@ -556,7 +556,7 @@ const getCourseById = asyncHandler(async (req, res) => {
   }
 });
 
-
+// Get Affiliate Sales Controller
 const getAffiliateSales = asyncHandler(async (req, res) => {
   const { userId } = req.params;
   const { page = 1, limit = 10 } = req.query;
