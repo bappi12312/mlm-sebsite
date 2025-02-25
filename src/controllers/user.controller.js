@@ -333,11 +333,14 @@ const updateUser = asyncHandler(async (req, res) => {
 
 // distribute commission for every users
 const userCommission = asyncHandler(async (req, res) => {
-  const { amount = 100 } = req.body;
+  // const { amount = 100 } = req.body;
 
   try {
+    // Validate amount
+    const amount = req.body.amount || 100;
     // Distribute commissions to the upline
     await distributeUplineCommissions(req.params.userId, Number(amount));
+    
 
     // Send success response
     return res
