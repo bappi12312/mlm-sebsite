@@ -7,6 +7,10 @@ const paymentSchema = new mongoose.Schema({
   },
   ToNumber: {
     type: String,
+    default: null,
+  },
+  transactionId: {
+    type: String,
     required: true,
   },
   Amount: {

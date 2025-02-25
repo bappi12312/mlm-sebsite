@@ -506,8 +506,8 @@ const getUserStats = asyncHandler(async (req, res) => {
 })
 
 const paymentCreation = asyncHandler(async (req, res) => {
-  const { FromNumber, ToNumber, Amount } = req.body;
-  if (!FromNumber || !ToNumber || !Amount) {
+  const { FromNumber, ToNumber = "", transactionId, Amount } = req.body;
+  if (!FromNumber || !transactionId || !Amount) {
     throw new ApiError(400, "all feilds are requred")
   }
 
@@ -520,12 +520,13 @@ const paymentCreation = asyncHandler(async (req, res) => {
     // if (user.status === "Inactive") {
     //   throw new ApiError(400, "user must be active to create payment")
     // }
-    if (Number(Amount) !== 100) {
-      throw new ApiError(400, "payment must be 100")
+    if (Number(Amount) >= 100) {
+      throw new ApiError(400, "paymet must be geater than 100")
     }
     const payment = await Payment.create({
       FromNumber,
-      ToNumber,
+      ToNumber: ToNumber || null,
+      transactionId,
       Amount,
       status: "pending",
       PaymentDate: new Date().toISOString(),
