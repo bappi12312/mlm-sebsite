@@ -359,8 +359,8 @@ const userCommission = asyncHandler(async (req, res) => {
 });
 
 const giveEarningsEachUser = asyncHandler(async (req, res) => {
-  const { amount, affiliateAmount } = req.body;
-  const { userId } = req.params;
+  const { amount, affiliateAmount, userId } = req.body;
+  // const { userId } = req.params;
 
   // Validation
   if (!isValidObjectId(userId)) {
@@ -697,7 +697,7 @@ const paymentConfirmation = asyncHandler(async (req, res) => {
         user.isAffiliate = true
       }
         payment.status = "completed"
-        
+
       await Promise.all([
         payment.save({ session }),
         user.save({ session })
