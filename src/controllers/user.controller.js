@@ -337,7 +337,7 @@ const userCommission = asyncHandler(async (req, res) => {
 
   try {
     // Validate amount
-    const amount = req.body.amount || 100;
+    const amount =  100;
     // Distribute commissions to the upline
     await distributeUplineCommissions(req.params.userId, Number(amount));
     
