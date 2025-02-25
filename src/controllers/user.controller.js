@@ -547,6 +547,44 @@ const paymentCreation = asyncHandler(async (req, res) => {
   }
 })
 
+const deleteAPayment = asyncHandler(async (req, res) => {
+  try {
+    // 1. Use only URL parameter for ID (RESTful standards)
+    const paymentId = req.params.id || req.body.id;
+
+    if (!paymentId || !isValidObjectId(paymentId)) {
+      throw new ApiError(400, "Payment ID is required");
+    }
+
+    // 2. Find the payment by ID
+    const payment = await Payment.findByIdAndDelete(
+      paymentId,
+      {new: true,runValidators: true}
+    )
+
+    if (!payment) {
+      throw new ApiError(404, "Payment not found");
+    }
+
+    return res
+      .status(200)
+      .json(
+        new ApiResponse(200, {}, "Payment deleted successfully")
+      );
+  } catch (error) {
+    // 3. Handle specific Mongoose errors
+    if (error instanceof mongoose.Error.CastError) {
+      throw new ApiError(400, "Invalid payment ID format");
+    }
+
+    // 4. Handle other errors
+    throw new ApiError(
+      error.statusCode || 500,
+      error.message || "Error while deleting payment"
+    );
+  }
+});
+
 const getAllPayment = asyncHandler(async (req, res) => {
   try {
     const payments = await Payment.aggregate(
@@ -630,6 +668,44 @@ const paymentRequsted = asyncHandler(async (req, res) => {
     throw new ApiError(500, error?.message || "error while getting payment requested")
   }
 })
+
+const deletePaymentRequest = asyncHandler(async (req, res) => {
+  try {
+    // 1. Use only URL parameter for ID (RESTful standards)
+    const paymentRequestId = req.params.id || req.body.id;
+
+    if (!paymentRequestId || !isValidObjectId(paymentRequestId)) {
+      throw new ApiError(400, "Payment Request ID is required");
+    }
+
+    // 2. Find the payment request by ID
+    const paymentRequest = await PaymentRequeste.findByIdAndDelete(
+      paymentRequestId,
+      {new: true,runValidators: true}
+    )
+
+    if (!paymentRequest) {
+      throw new ApiError(404, "Payment Request not found");
+    }
+
+    return res
+      .status(200)
+      .json(
+        new ApiResponse(200, {}, "Payment Request deleted successfully")
+      );
+  } catch (error) {
+    // 3. Handle specific Mongoose errors
+    if (error instanceof mongoose.Error.CastError) {
+      throw new ApiError(400, "Invalid payment request ID format");
+    }
+
+    // 4. Handle other errors
+    throw new ApiError(
+      error.statusCode || 500,
+      error.message || "Error while deleting payment request"
+    );
+  }
+});
 
 // admin
 
@@ -802,5 +878,7 @@ export {
   getSingleUser,
   deleteAUser,
   updateUserPakagelink,
-  giveEarningsEachUser
+  giveEarningsEachUser,
+  deleteAPayment,
+  deletePaymentRequest
 }
