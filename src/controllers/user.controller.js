@@ -520,7 +520,7 @@ const paymentCreation = asyncHandler(async (req, res) => {
     // if (user.status === "Inactive") {
     //   throw new ApiError(400, "user must be active to create payment")
     // }
-    if (Number(Amount) >= 100) {
+    if (Number(Amount) >= 90) {
       throw new ApiError(400, "paymet must be geater than 100")
     }
     const payment = await Payment.create({
