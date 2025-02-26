@@ -511,6 +511,7 @@ const paymentCreation = asyncHandler(async (req, res) => {
     throw new ApiError(400, "all feilds are requred")
   }
 
+
   try {
 
     // const user = await User.findById(req.user?._id)
@@ -520,8 +521,8 @@ const paymentCreation = asyncHandler(async (req, res) => {
     // if (user.status === "Inactive") {
     //   throw new ApiError(400, "user must be active to create payment")
     // }
-    if (Number(Amount) >= 90) {
-      throw new ApiError(400, "paymet must be geater than 100")
+    if (parseFloat(Amount) < 100) {
+      throw new ApiError(400, "amount must be geater than 100")
     }
     const payment = await Payment.create({
       FromNumber,
