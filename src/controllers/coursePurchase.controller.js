@@ -2,7 +2,7 @@ import { User } from "../models/user.model.js";
 import {asyncHandler} from "../utils/asyncHandler.js";
 import { ApiError } from "../utils/ApiError.js";
 import {ApiResponse} from "../utils/ApiResponse.js"
-import mongoose from "mongoose";
+import mongoose, { isValidObjectId } from "mongoose";
 import { AffiliateSale } from "../models/affiliateSale.model.js";
 import { Course } from "../models/coursePakageSchema.model.js";
 import { uploadOnCloudinary } from '../utils/cloudinary.js'
@@ -13,6 +13,12 @@ const coursePurchase = asyncHandler(async (req, res) => {
  
   try {
     const {courseId, affiliateCode} = req.body;
+    if(!isValidObjectId (courseId)){
+      throw new ApiError(400,"Invalid course ID")
+    }
+    if(affiliateCode) {
+     throw new ApiError(400,"Invalid affiliate code")
+    }
     const course = await Course.findById(courseId).session(session);
     if(!course){
       throw new ApiError(404,"Course not found")
@@ -21,7 +27,6 @@ const coursePurchase = asyncHandler(async (req, res) => {
     if(!user){
       throw new ApiError(404,"User not found")
     }
-
     let affiliate = null;
     if(affiliateCode){
       affiliate = await User.findOne({referalCode: affiliateCode}).session(session);
